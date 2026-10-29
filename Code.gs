@@ -194,7 +194,7 @@ function saveRule(rule) {
 
 /* ---------- Gemini ---------- */
 /* Fast models first. GEMINI_MODEL (Script Property) overrides; the last model that worked is remembered. */
-const GEMINI_FALLBACK = ['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'];
+const GEMINI_FALLBACK = ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'];
 
 function thinkingFor_(model) {
   if (/2\.5/.test(model)) return { thinkingBudget: 0 };          // Gemini 2.5: turn thinking off
@@ -234,7 +234,7 @@ function gemini_(parts, asJson) {
     if (!r.ok && r.code === 400 && /think/i.test(r.error)) r = callModel_(key, models[i], parts, asJson, false);
     if (r.ok) { if (remembered !== models[i]) cache.put('gemini_ok_model', models[i], 21600); return r.text; }
     lastErr = r.error;
-    if (r.code !== 404 && r.code !== 400) break; // try the next model only when this model name is unavailable
+    if ([400, 404, 429, 500, 503].indexOf(r.code) < 0) break; // next model when this one is unavailable or busy
   }
   throw new Error(lastErr);
 }
