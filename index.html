@@ -7,8 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=4">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4">
 <meta name="apple-mobile-web-app-title" content="ລາຍຮັບ-ຈ່າຍ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="config.js"></script>
@@ -198,6 +198,21 @@ nav.nav .fab:active{transform:scale(1.12)}
 .thumb .rm{background:rgba(30,42,60,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .pg div{background:rgba(11,39,66,.12)}.pg div.on{background:var(--inc)}
 .press:active{transform:scale(1.04);filter:brightness(1.06)}
+/* add form: amount + selects */
+.amtrow{display:flex;align-items:center;gap:8px;min-width:0}
+.amtsign{font-size:34px;font-weight:700;line-height:1}
+.amtin{flex:1;min-width:0;border:none;outline:none;background:transparent;font-size:36px;font-weight:700;letter-spacing:-.02em;padding:4px 0;font-variant-numeric:tabular-nums}
+.amtin::placeholder{color:rgba(11,39,66,.25)}
+.selwrap{position:relative;display:flex;align-items:center;gap:10px;background:var(--sheen),var(--gfill2);-webkit-backdrop-filter:var(--gf);backdrop-filter:var(--gf);border:1px solid rgba(255,255,255,.7);box-shadow:var(--ghi),var(--gsh);border-radius:18px;padding:0 38px 0 12px;min-height:52px}
+.selwrap::after{content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;border-right:2px solid var(--navy);border-bottom:2px solid var(--navy);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.selwrap select{appearance:none;-webkit-appearance:none;border:none;outline:none;background:transparent;font-size:16px;font-weight:700;color:var(--navy);flex:1;min-width:0;height:50px;padding:0}
+.cursel{flex-shrink:0;padding-left:14px;border-radius:999px}
+.cursel select{width:auto;font-size:16px}
+.catsel .ico{width:36px;height:36px;border-radius:12px}
+.qchip{border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,calc(var(--ga) + .1));border-radius:999px;padding:0 12px;min-height:36px;font-size:12px;font-weight:600;color:var(--navy)}
+.qchip.on{background:var(--acc);color:var(--accfg)}
+.amtin:focus,.selwrap:focus-within{outline:none}
+.selwrap:focus-within{box-shadow:var(--ghi),0 0 0 2px rgba(37,99,201,.45)}
 /* glass control in settings */
 .gl-range{width:100%;accent-color:#5A8F00;height:32px}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--ga:.85}}
@@ -307,7 +322,7 @@ const catTint = (id) => TINT[CATS[id] ? CATS[id][1] : 'shop'];
 /* ===== State ===== */
 const S = {
   tx: [], settings: { rate_THB: 650, rate_USD: 21800, rate_CNY: 3000, owner_name: '' }, rules: [], aiKey: false, demo: false, sheetUrl: '',
-  view: 'home', month: ymOf(new Date()), filter: 'all', q: '', add: null, slip: null, ai: [], aiBusy: false, flip: false
+  view: 'home', month: ymOf(new Date()), filter: 'all', rcur: 'ALL', q: '', add: null, slip: null, ai: [], aiBusy: false, flip: false
 };
 const rate = (c) => (c === 'LAK' ? 1 : (Number(S.settings['rate_' + c]) || 1));
 
@@ -353,6 +368,12 @@ const Local = {
     this._put(d); return { saved, skipped };
   },
   deleteTx(id) { const d = this._get(); d.tx = d.tx.filter((x) => x.id !== id); this._put(d); return true; },
+  updateTx(id, t) {
+    const d = this._get(); const i = d.tx.findIndex((x) => x.id === id); if (i < 0) throw new Error('ບໍ່ພົບລາຍການ');
+    const old = d.tx[i]; const r = t.currency === old.currency ? Number(old.rate) || 1 : (t.currency === 'LAK' ? 1 : Number(d.settings['rate_' + t.currency]) || 1);
+    const o = Object.assign({}, old, t, { id, amount: String(t.amount), rate: String(r), amount_lak: String(Math.round(Number(t.amount) * r)), source: old.source, ref: old.ref, counterparty: old.counterparty, created_at: old.created_at });
+    d.tx[i] = o; this._put(d); return o;
+  },
   saveSettings(s) { const d = this._get(); Object.assign(d.settings, s); this._put(d); return d.settings; },
   saveRule(r) { const d = this._get(); const k = String(r.match).toUpperCase(); d.rules = d.rules.filter((x) => x.match !== k); d.rules.push({ match: k, type: r.type, category: r.category }); this._put(d); return d.rules; },
   readSlip() { throw new Error('ການອ່ານສະລິບດ້ວຍ AI ໃຊ້ໄດ້ເມື່ອເປີດຜ່ານ Apps Script ແລະ ຕັ້ງ GEMINI_API_KEY ແລ້ວ'); },
@@ -361,19 +382,19 @@ const Local = {
 
 /* ===== Calculations ===== */
 const monthTx = (m) => S.tx.filter((t) => String(t.date).slice(0, 7) === m);
-function totals(list) {
+function totals(list, key) {
   let inc = 0, exp = 0, pass = 0;
-  list.forEach((t) => { const v = Number(t.amount_lak) || 0; if (t.type === 'exp') exp += v; else if (t.category === 'pass') pass += v; else inc += v; });
+  list.forEach((t) => { const v = Number(t[key || 'amount_lak']) || 0; if (t.type === 'exp') exp += v; else if (t.category === 'pass') pass += v; else inc += v; });
   return { inc, exp, pass, net: inc - exp };
 }
-function byCat(list) {
+function byCat(list, key) {
   const m = {};
-  list.filter((t) => t.type === 'exp').forEach((t) => { m[t.category] = m[t.category] || { id: t.category, name: catName(t.category), v: 0, n: 0 }; m[t.category].v += Number(t.amount_lak) || 0; m[t.category].n++; });
+  list.filter((t) => t.type === 'exp').forEach((t) => { m[t.category] = m[t.category] || { id: t.category, name: catName(t.category), v: 0, n: 0 }; m[t.category].v += Number(t[key || 'amount_lak']) || 0; m[t.category].n++; });
   return Object.values(m).sort((a, b) => b.v - a.v);
 }
 function byCur(list) {
   const m = {};
-  list.forEach((t) => { const c = t.currency || 'LAK'; m[c] = m[c] || { cur: c, exp: 0, inc: 0 }; m[c][t.type === 'exp' ? 'exp' : 'inc'] += Number(t.amount) || 0; });
+  list.forEach((t) => { const c = t.currency || 'LAK'; m[c] = m[c] || { cur: c, exp: 0, inc: 0, expL: 0, incL: 0 }; if (t.type !== 'exp' && t.category === 'pass') return; const k = t.type === 'exp' ? 'exp' : 'inc'; m[c][k] += Number(t.amount) || 0; m[c][k + 'L'] += Number(t.amount_lak) || 0; });
   return Object.values(m);
 }
 const sortDesc = (a, b) => (b.date + b.time + b.created_at).localeCompare(a.date + a.time + a.created_at);
@@ -483,26 +504,37 @@ function renderListBody() {
 }
 
 function renderReport() {
-  const list = monthTx(S.month), T = totals(list), cats = byCat(list);
+  const RC = S.rcur || 'ALL', all = RC === 'ALL', key = all ? 'amount_lak' : 'amount';
+  const inCur = (l) => (all ? l : l.filter((t) => (t.currency || 'LAK') === RC));
+  const sym = all ? '₭' : CUR[RC].sym, dec = all ? 0 : CUR[RC].dec;
+  const f = (n) => fmt(n, dec);
+  const sh = (n) => (all || RC === 'LAK' ? short(n) : fmt(n, dec));
+  const list = inCur(monthTx(S.month)), T = totals(list, key), cats = byCat(list, key);
   const top = cats.slice(0, 5), rest = cats.slice(5).reduce((a, c) => a + c.v, 0);
   const segs = top.map((c, i) => ({ name: c.name, v: c.v, n: c.n, col: PALETTE[i] })).concat(rest ? [{ name: 'ອື່ນໆ', v: rest, n: 0, col: PALETTE[5] }] : []);
   const C = 2 * Math.PI * 60;
   let off = 0;
   const circles = segs.map((s) => { const len = s.v / (T.exp || 1) * C; const c = '<circle cx="80" cy="80" r="60" stroke="' + s.col + '" stroke-dasharray="' + Math.max(len - 2, 0.5).toFixed(2) + ' ' + C.toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '"/>'; off += len; return c; }).join('');
   const months = [];
-  for (let i = 5; i >= 0; i--) { const m = shiftMonth(S.month, -i); const t = totals(monthTx(m)); months.push({ m, inc: t.inc, exp: t.exp }); }
+  for (let i = 5; i >= 0; i--) { const m = shiftMonth(S.month, -i); const t = totals(inCur(monthTx(m)), key); months.push({ m, inc: t.inc, exp: t.exp }); }
   const max = Math.max(1, ...months.map((x) => Math.max(x.inc, x.exp)));
-  const curs = byCur(list);
+  const curs = byCur(monthTx(S.month));
+  const pct = (v) => (T.exp ? (v / T.exp * 100 < 1 && v > 0 ? '<1' : Math.round(v / T.exp * 100)) : 0);
+  const modes = [['ALL', 'ລວມທຸກສະກຸນ ≈ ₭']].concat(Object.keys(CUR).map((c) => [c, CUR[c].sym + ' ' + CUR[c].name]));
+  const totL = curs.reduce((a, c) => ({ e: a.e + c.expL, i: a.i + c.incL }), { e: 0, i: 0 });
   $('#v-report').innerHTML =
     '<header class="row sb r3d"><h1 class="h1">ລາຍງານ</h1></header>' + monthBar('r3d d1') +
-    '<div class="g3 r3d d2">' + [['ລາຍຮັບ', T.inc, 'var(--inc)'], ['ລາຍຈ່າຍ', T.exp, 'var(--exp)'], ['ຄົງເຫຼືອ', T.net, 'var(--navy)']].map((x) => '<div class="card" style="padding:12px;gap:2px"><span class="muted xs">' + x[0] + '</span><b class="money" style="font-size:17px;color:' + x[2] + '">' + short(x[1]) + '</b></div>').join('') + '</div>' +
+    '<div class="chips r3d d1" role="group" aria-label="ສະກຸນເງິນຂອງລາຍງານ">' + modes.map((m) => '<button class="chip' + (RC === m[0] ? ' on' : '') + '" data-act="rcur" data-v="' + m[0] + '" aria-pressed="' + (RC === m[0]) + '">' + m[1] + '</button>').join('') + '</div>' +
+    '<span class="muted xs r3d d1" style="margin-top:-6px;padding:0 2px">' + (all ? 'ທຸກສະກຸນເງິນ ແປງເປັນກີບຕາມອັດຕາທີ່ບັນທຶກ (1฿ = ' + fmt(rate('THB')) + ' ₭ · 1$ = ' + fmt(rate('USD')) + ' ₭ · 1¥ = ' + fmt(rate('CNY')) + ' ₭)' : 'ສະເພາະລາຍການທີ່ເປັນ ' + CUR[RC].name + ' · ສະແດງເປັນ ' + sym) + '</span>' +
+    '<div class="g3 r3d d2">' + [['ລາຍຮັບ', T.inc, 'var(--inc)'], ['ລາຍຈ່າຍ', T.exp, 'var(--exp)'], ['ຄົງເຫຼືອ', T.net, 'var(--navy)']].map((x) => '<div class="card" style="padding:12px;gap:2px"><span class="muted xs">' + x[0] + ' (' + sym + ')</span><b class="money" style="font-size:17px;color:' + x[2] + '">' + sh(x[1]) + '</b></div>').join('') + '</div>' +
     '<section class="card r3d d3"><h2 class="h2">ລາຍຈ່າຍຕາມໝວດ</h2>' +
-    (segs.length ? '<div class="float3d" style="position:relative;width:170px;height:170px;align-self:center"><svg class="donut" role="img" aria-label="ກາຟວົງມົນລາຍຈ່າຍຕາມໝວດ" width="170" height="170" viewBox="0 0 160 160"><g transform="rotate(-90 80 80)" fill="none" stroke-width="22">' + circles + '</g></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b class="money" style="font-size:22px">' + short(T.exp) + '</b><span class="muted xs">ກີບ · ລາຍຈ່າຍ</span></div></div>' +
-      segs.map((s) => '<div class="lg" style="padding:6px 0;border-top:1px solid var(--line2)"><span class="dot" style="background:' + s.col + '"></span><span style="flex:1">' + esc(s.name) + ' <span class="muted xs">' + Math.round(s.v / T.exp * 100) + '%</span></span><b class="money">' + fmt(s.v) + '</b></div>').join('') : '<div class="empty">ຍັງບໍ່ມີລາຍຈ່າຍໃນເດືອນນີ້</div>') + '</section>' +
-    '<section class="card r3d d4"><h2 class="h2">ລາຍຮັບ vs ລາຍຈ່າຍ · 6 ເດືອນ</h2><div class="row xs muted" style="gap:14px"><span class="row" style="gap:6px"><span class="dot" style="background:var(--inc)"></span>ລາຍຮັບ</span><span class="row" style="gap:6px"><span class="dot" style="background:var(--exp)"></span>ລາຍຈ່າຍ</span></div>' +
-    '<div role="img" aria-label="ກາຟແທ່ງ 6 ເດືອນ" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:end;height:150px;border-bottom:1px solid #D9D6CF">' + months.map((x) => '<div style="display:flex;justify-content:center;align-items:flex-end;gap:3px;height:100%"><div class="bar" style="width:13px;height:' + Math.round(x.inc / max * 140) + 'px;background:var(--inc);border-radius:4px 4px 0 0"></div><div class="bar" style="width:13px;height:' + Math.round(x.exp / max * 140) + 'px;background:var(--exp);border-radius:4px 4px 0 0"></div></div>').join('') + '</div>' +
+    (segs.length ? '<div class="float3d" style="position:relative;width:170px;height:170px;align-self:center"><svg class="donut" role="img" aria-label="ກາຟວົງມົນລາຍຈ່າຍຕາມໝວດ" width="170" height="170" viewBox="0 0 160 160"><g transform="rotate(-90 80 80)" fill="none" stroke-width="22">' + circles + '</g></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b class="money" style="font-size:' + (sh(T.exp).length > 7 ? 18 : 22) + 'px">' + sh(T.exp) + '</b><span class="muted xs">ລາຍຈ່າຍ · ' + (all ? '≈ ₭' : CUR[RC].sym) + '</span></div></div>' +
+      segs.map((s) => '<div class="lg" style="padding:6px 0;border-top:1px solid var(--line2)"><span class="dot" style="background:' + s.col + '"></span><span style="flex:1">' + esc(s.name) + ' <span class="muted xs">' + pct(s.v) + '%</span></span><b class="money">' + f(s.v) + ' ' + sym + '</b></div>').join('') : '<div class="empty">ຍັງບໍ່ມີລາຍຈ່າຍ' + (all ? '' : 'ເປັນ' + CUR[RC].name) + 'ໃນເດືອນນີ້</div>') + '</section>' +
+    '<section class="card r3d d4"><h2 class="h2">ລາຍຮັບ vs ລາຍຈ່າຍ · 6 ເດືອນ</h2><div class="row xs muted" style="gap:14px"><span class="row" style="gap:6px"><span class="dot" style="background:var(--inc)"></span>ລາຍຮັບ</span><span class="row" style="gap:6px"><span class="dot" style="background:var(--exp)"></span>ລາຍຈ່າຍ</span><span style="margin-left:auto">' + sym + '</span></div>' +
+    '<div role="img" aria-label="ກາຟແທ່ງ 6 ເດືອນ" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:end;height:150px;border-bottom:1px solid rgba(11,39,66,.15)">' + months.map((x) => '<div style="display:flex;justify-content:center;align-items:flex-end;gap:3px;height:100%"><div class="bar" style="width:13px;height:' + Math.round(x.inc / max * 140) + 'px;background:var(--inc);border-radius:4px 4px 0 0"></div><div class="bar" style="width:13px;height:' + Math.round(x.exp / max * 140) + 'px;background:var(--exp);border-radius:4px 4px 0 0"></div></div>').join('') + '</div>' +
     '<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));font-size:11px;text-align:center" class="muted">' + months.map((x) => '<span' + (x.m === S.month ? ' style="color:var(--navy);font-weight:700"' : '') + '>' + MS[Number(x.m.slice(5)) - 1] + '</span>').join('') + '</div></section>' +
-    (curs.length ? '<section class="card r3d d5"><h2 class="h2">ແຍກຕາມສະກຸນເງິນ</h2>' + curs.map((c) => '<div class="lg" style="padding:6px 0;border-top:1px solid var(--line2)"><b style="width:28px;font-size:18px">' + CUR[c.cur].sym + '</b><span style="flex:1">' + CUR[c.cur].name + '</span><span class="col money" style="align-items:flex-end;gap:0"><span style="color:var(--exp);font-weight:700">−' + fmt(c.exp, c.cur === 'LAK' ? 0 : 2) + '</span>' + (c.inc ? '<span style="color:var(--inc);font-size:12px">+' + fmt(c.inc, c.cur === 'LAK' ? 0 : 2) + '</span>' : '') + '</span></div>').join('') + '</section>' : '');
+    (curs.length ? '<section class="card r3d d5"><h2 class="h2">ແຍກຕາມສະກຸນເງິນ</h2>' + curs.map((c) => '<div class="lg" style="padding:8px 0;border-top:1px solid var(--line2);align-items:flex-start"><b style="width:28px;font-size:18px">' + CUR[c.cur].sym + '</b><span style="flex:1">' + CUR[c.cur].name + '</span><span class="col money" style="align-items:flex-end;gap:1px">' + (c.exp ? '<span style="color:var(--exp);font-weight:700">−' + fmt(c.exp, CUR[c.cur].dec) + ' ' + CUR[c.cur].sym + '</span>' : '') + (c.cur !== 'LAK' && c.exp ? '<span class="muted xs">≈ ' + fmt(c.expL) + ' ₭</span>' : '') + (c.inc ? '<span style="color:var(--inc);font-size:12px">+' + fmt(c.inc, CUR[c.cur].dec) + ' ' + CUR[c.cur].sym + (c.cur !== 'LAK' ? ' ≈ ' + fmt(c.incL) + ' ₭' : '') + '</span>' : '') + '</span></div>').join('') +
+      '<div class="lg" style="padding:10px 0 0;border-top:1.5px solid rgba(11,39,66,.25)"><b style="flex:1">ລວມທັງໝົດ ≈ ກີບ</b><span class="col money" style="align-items:flex-end;gap:1px"><b style="color:var(--exp)">−' + fmt(totL.e) + ' ₭</b>' + (totL.i ? '<span style="color:var(--inc);font-size:12px">+' + fmt(totL.i) + ' ₭</span>' : '') + '</span></div></section>' : '');
 }
 
 function aiSummary() {
@@ -550,84 +582,87 @@ function render() {
   renderNav();
 }
 
-/* ===== Add transaction ===== */
-function openAdd() {
+/* ===== Add / edit transaction ===== */
+function catOptions(type, sel) {
+  const opt = (id) => '<option value="' + id + '"' + (id === sel ? ' selected' : '') + '>' + esc(catName(id)) + '</option>';
+  if (type === 'inc') return INC_IDS.map(opt).join('');
+  return GROUPS.map((g) => '<optgroup label="' + esc(g.label) + '">' + g.items.map(opt).join('') + '</optgroup>').join('');
+}
+function amtFormat(raw, cur) {
+  let v = String(raw || '').replace(/[^0-9.]/g, '');
+  const dec = CUR[cur].dec;
+  if (!dec) v = v.replace(/\./g, '');
+  const p = v.split('.');
+  let int = (p[0] || '').replace(/^0+(?=\d)/, '').slice(0, 12);
+  let out = int ? Number(int).toLocaleString('en-US') : (p.length > 1 ? '0' : '');
+  if (dec && p.length > 1) out += '.' + p.slice(1).join('').slice(0, dec);
+  return out;
+}
+const amtValue = (txt) => parseFloat(String(txt || '').replace(/,/g, '')) || 0;
+function openAdd(editId) {
+  const t = editId ? S.tx.find((x) => x.id === editId) : null;
   const sug = timeSuggest();
-  S.add = { type: 'exp', amount: '', cur: 'LAK', cat: sug[0], tab: 'fav', date: todayStr(), time: nowTime(), note: '', sug };
+  S.add = t
+    ? { edit: t.id, type: t.type === 'inc' ? 'inc' : 'exp', amount: amtFormat(String(Number(t.amount) || ''), t.currency || 'LAK'), cur: t.currency || 'LAK', cat: t.category, date: /^\d{4}-\d{2}-\d{2}$/.test(t.date) ? t.date : todayStr(), time: /^\d{2}:\d{2}/.test(t.time || '') ? String(t.time).slice(0, 5) : '', note: t.note || '', sug }
+    : { type: 'exp', amount: '', cur: 'LAK', cat: sug[0], date: todayStr(), time: nowTime(), note: '', sug };
+  const A = S.add;
   const ov = $('#ov-add');
   ov.innerHTML =
     '<div class="ov-body">' +
-    '<header class="row sb r3d"><button class="ib" data-act="closeadd" aria-label="ປິດ">' + svg('x', 18, 2) + '</button><h1 class="h2" style="font-size:17px">ເພີ່ມລາຍການ</h1><button class="ib" data-act="slip" aria-label="ສະແກນສະລິບ" style="background:var(--sheen),var(--acc);color:var(--accfg)">' + svg('cam', 20) + '</button></header>' +
+    '<header class="row sb r3d"><button class="ib" data-act="closeadd" aria-label="ປິດ">' + svg('x', 18, 2) + '</button><h1 class="h2" style="font-size:17px">' + (A.edit ? 'ແກ້ໄຂລາຍການ' : 'ເພີ່ມລາຍການ') + '</h1>' + (A.edit ? '<span style="width:44px"></span>' : '<button class="ib" data-act="slip" aria-label="ສະແກນສະລິບ" style="background:var(--sheen),var(--acc);color:var(--accfg)">' + svg('cam', 20) + '</button>') + '</header>' +
     '<div class="seg r3d d1" style="grid-template-columns:repeat(2,minmax(0,1fr))" id="add-type"></div>' +
-    '<div class="col r3d d2" style="align-items:center;gap:2px"><output id="add-amt" class="amtbig" aria-live="polite"></output><span class="muted xs" id="add-conv"></span></div>' +
-    '<div class="curs r3d d2" id="add-cur" role="group" aria-label="ສະກຸນເງິນ"></div>' +
-    '<div class="col r3d d3" style="gap:10px" id="add-tabwrap"><div class="chips" id="add-tabs" role="tablist" aria-label="ກຸ່ມໝວດ"></div><div class="row sb xs muted" style="padding:0 2px"><span id="add-cap"></span><b id="add-sel" style="color:var(--navy);text-align:right"></b></div></div>' +
-    '<div class="cats" id="add-grid" role="group" aria-label="ເລືອກໝວດ"></div>' +
-    '<div class="g2"><label class="field" style="padding:0 10px"><input type="date" id="add-date" aria-label="ວັນທີ" value="' + S.add.date + '"></label><label class="field" style="padding:0 10px"><input type="time" id="add-time" aria-label="ເວລາ" value="' + S.add.time + '"></label></div>' +
-    '<label class="field"><span class="muted sm" style="flex-shrink:0">ບັນທຶກ</span><input id="add-note" placeholder="ເຊັ່ນ: ກາເຟ ກັບໝູ່" maxlength="200"></label>' +
+    '<section class="card r3d d2" style="gap:10px"><span class="muted xs">ຈຳນວນເງິນ</span>' +
+    '<div class="amtrow"><span class="amtsign" id="add-sign"></span><input id="add-amount" class="amtin" type="text" inputmode="' + (CUR[A.cur].dec ? 'decimal' : 'numeric') + '" autocomplete="off" placeholder="0" aria-label="ຈຳນວນເງິນ" value="' + esc(A.amount) + '">' +
+    '<label class="selwrap cursel"><select id="add-cur" aria-label="ສະກຸນເງິນ">' + Object.keys(CUR).map((c) => '<option value="' + c + '"' + (c === A.cur ? ' selected' : '') + '>' + CUR[c].sym + ' ' + CUR[c].name + '</option>').join('') + '</select></label></div>' +
+    '<span class="muted xs" id="add-conv"></span></section>' +
+    '<section class="card r3d d3" style="gap:10px"><span class="muted xs">ໝວດລາຍການ</span><label class="selwrap catsel"><span class="ico" id="add-catico"></span><select id="add-cat" aria-label="ໝວດລາຍການ"></select></label>' +
+    (A.edit ? '' : '<div class="row xs muted" id="add-sug" style="gap:6px;flex-wrap:wrap"></div>') + '</section>' +
+    '<div class="g2 r3d d4"><label class="field" style="padding:0 10px"><input type="date" id="add-date" aria-label="ວັນທີ" value="' + A.date + '"></label><label class="field" style="padding:0 10px"><input type="time" id="add-time" aria-label="ເວລາ" value="' + A.time + '"></label></div>' +
+    '<label class="field r3d d4"><span class="muted sm" style="flex-shrink:0">ບັນທຶກ</span><input id="add-note" placeholder="ເຊັ່ນ: ກາເຟ ກັບໝູ່" maxlength="200" value="' + esc(A.note) + '"></label>' +
     '</div>' +
-    '<div class="ov-foot r3d d4"><div class="keys" id="add-keys"></div><button class="btn press" data-act="save">' + svg('check', 18, 2.4) + 'ບັນທຶກລາຍການ</button></div>';
+    '<div class="ov-foot r3d d4"><button class="btn press" data-act="save">' + svg('check', 18, 2.4) + (A.edit ? 'ບັນທຶກການແກ້ໄຂ' : 'ບັນທຶກລາຍການ') + '</button></div>';
   ov.classList.add('on');
   $('#add-note').addEventListener('input', (e) => { S.add.note = e.target.value; });
   $('#add-date').addEventListener('change', (e) => { S.add.date = e.target.value; });
   $('#add-time').addEventListener('change', (e) => { S.add.time = e.target.value; });
+  $('#add-amount').addEventListener('input', (e) => { const el = e.target; const f = amtFormat(el.value, S.add.cur); el.value = f; S.add.amount = f; updateAdd(false); });
+  $('#add-cur').addEventListener('change', (e) => { S.add.cur = e.target.value; const el = $('#add-amount'); el.inputMode = CUR[S.add.cur].dec ? 'decimal' : 'numeric'; el.value = S.add.amount = amtFormat(el.value, S.add.cur); updateAdd(false); });
+  $('#add-cat').addEventListener('change', (e) => { S.add.cat = e.target.value; updateAdd(true); });
   updateAdd(true);
 }
-function updateAdd(all, gridAnim) {
+function updateAdd(all) {
   const A = S.add; if (!A) return;
   const exp = A.type === 'exp';
-  $('#add-type').innerHTML = [['exp', 'ລາຍຈ່າຍ'], ['inc', 'ລາຍຮັບ']].map((x) => '<button class="' + (A.type === x[0] ? 'on' : '') + '" data-act="atype" data-v="' + x[0] + '" aria-pressed="' + (A.type === x[0]) + '">' + x[1] + '</button>').join('');
-  const parts = A.amount.split('.');
-  const txt = A.amount ? fmt(Number(parts[0] || 0)) + (parts.length > 1 ? '.' + parts[1] : '') : '0';
-  const amtEl = $('#add-amt');
-  amtEl.style.color = exp ? 'var(--exp)' : 'var(--inc)';
-  amtEl.innerHTML = (exp ? '−' : '+') + txt + ' <span>' + CUR[A.cur].sym + '</span>';
-  amtEl.classList.remove('bump'); void amtEl.offsetWidth; amtEl.classList.add('bump');
-  const num = parseFloat(A.amount || '0') || 0;
-  $('#add-conv').textContent = A.cur === 'LAK' ? 'ສະກຸນຫຼັກ: ກີບ' : '≈ ' + fmt(Math.round(num * rate(A.cur))) + ' ₭ · ອັດຕາ 1' + CUR[A.cur].sym + ' = ' + fmt(rate(A.cur)) + ' ₭';
+  const num = amtValue(A.amount);
+  const sign = $('#add-sign'); sign.textContent = exp ? '−' : '+'; sign.style.color = exp ? 'var(--exp)' : 'var(--inc)';
+  $('#add-amount').style.color = exp ? 'var(--exp)' : 'var(--inc)';
+  $('#add-conv').textContent = A.cur === 'LAK' ? 'ກີບ' : '≈ ' + fmt(Math.round(num * rate(A.cur))) + ' ₭ · ອັດຕາ 1' + CUR[A.cur].sym + ' = ' + fmt(rate(A.cur)) + ' ₭';
   if (!all) return;
-  $('#add-cur').innerHTML = Object.keys(CUR).map((c) => '<button class="press' + (A.cur === c ? ' on' : '') + '" data-act="acur" data-v="' + c + '" aria-pressed="' + (A.cur === c) + '"><i>' + CUR[c].sym + '</i>' + CUR[c].name + '</button>').join('');
-  $('#add-tabwrap').style.display = exp ? '' : 'none';
-  const tabs = [{ id: 'fav', label: '✦ ໃຊ້ບ່ອຍ', items: favList() }].concat(GROUPS);
-  if (exp) {
-    $('#add-tabs').innerHTML = tabs.map((g) => '<button role="tab" class="chip' + (A.tab === g.id ? ' on' : '') + '" aria-selected="' + (A.tab === g.id) + '" data-act="atab" data-v="' + g.id + '">' + g.label + '<span class="cnt">' + g.items.length + '</span></button>').join('');
-    const g = tabs.find((x) => x.id === A.tab) || tabs[0];
-    $('#add-cap').textContent = A.tab === 'fav' ? '✦ = AI ແນະນຳຕາມເວລາ ' + nowTime() : g.label + ' · ' + g.items.length + ' ລາຍການ';
+  $('#add-type').innerHTML = [['exp', 'ລາຍຈ່າຍ'], ['inc', 'ລາຍຮັບ']].map((x) => '<button class="' + (A.type === x[0] ? 'on' : '') + '" data-act="atype" data-v="' + x[0] + '" aria-pressed="' + (A.type === x[0]) + '">' + x[1] + '</button>').join('');
+  $('#add-cat').innerHTML = catOptions(A.type, A.cat);
+  const tn = catTint(A.cat), ico = $('#add-catico');
+  ico.style.background = tn[0]; ico.style.color = tn[1]; ico.innerHTML = svg(IC[A.cat] ? A.cat : 'other', 20);
+  const sg = $('#add-sug');
+  if (sg) {
+    const quick = exp ? A.sug.concat(favList()).filter((id, i, arr) => arr.indexOf(id) === i).slice(0, 4) : ['salary', 'side', 'pass'];
+    sg.innerHTML = '<span>ດ່ວນ:</span>' + quick.map((id) => '<button class="qchip' + (A.cat === id ? ' on' : '') + '" data-act="acat" data-v="' + id + '">' + esc(catName(id)) + '</button>').join('');
   }
-  $('#add-sel').textContent = catName(A.cat);
-  const ids = exp ? (tabs.find((x) => x.id === A.tab) || tabs[0]).items : INC_IDS;
-  const grid = $('#add-grid');
-  grid.innerHTML = ids.map((id) => {
-    const tn = catTint(id);
-    const ai = exp && A.tab === 'fav' && A.sug.indexOf(id) >= 0;
-    return '<button class="cat press' + (A.cat === id ? ' on' : '') + '" data-act="acat" data-v="' + id + '" aria-pressed="' + (A.cat === id) + '"><span class="ci" style="background:' + tn[0] + ';color:' + tn[1] + '">' + svg(id, 22) + (ai ? '<span class="badge" aria-hidden="true"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg></span>' : '') + '</span><span class="cl">' + esc(catName(id)) + '</span></button>';
-  }).join('');
-  if (gridAnim) { grid.classList.remove('tileIn'); void grid.offsetWidth; grid.classList.add('tileIn'); }
-  const special = A.cur === 'LAK' ? '000' : '.';
-  $('#add-keys').innerHTML = ['1', '2', '3', '4', '5', '6', '7', '8', '9', special, '0', 'back'].map((k) => '<button class="press" data-act="key" data-v="' + k + '" aria-label="' + (k === 'back' ? 'ລຶບ' : k) + '">' + (k === 'back' ? svg('bksp', 22) : k) + '</button>').join('');
-}
-function pressKey(k) {
-  const A = S.add; let a = A.amount;
-  if (k === 'back') a = a.slice(0, -1);
-  else if (k === '.') { if (a.indexOf('.') < 0) a = (a || '0') + '.'; }
-  else if (a === '' && (k === '0' || k === '000')) a = '';
-  else if (a.indexOf('.') >= 0 && a.split('.')[1].length >= 2) a = a;
-  else if ((a + k).replace('.', '').length <= 11) a = a + k;
-  A.amount = a; updateAdd(false);
 }
 async function saveAdd() {
   const A = S.add;
-  const amount = parseFloat(A.amount || '0');
-  if (!amount) { toast('ກະລຸນາໃສ່ຈຳນວນເງິນ'); return; }
+  const amount = amtValue(A.amount);
+  if (!amount) { toast('ກະລຸນາໃສ່ຈຳນວນເງິນ'); const el = $('#add-amount'); if (el) el.focus(); return; }
   const btn = document.querySelector('[data-act="save"]'); btn.disabled = true;
+  const payload = { type: A.type, category: A.cat, amount, currency: A.cur, date: A.date, time: A.time, note: A.note.trim(), source: 'manual' };
   try {
-    const o = await api('addTx', { type: A.type, category: A.cat, amount, currency: A.cur, date: A.date, time: A.time, note: A.note, source: 'manual' });
-    S.tx.push(o);
+    let o;
+    if (A.edit) { o = await api('updateTx', A.edit, payload); S.tx = S.tx.map((x) => (x.id === A.edit ? o : x)); }
+    else { o = await api('addTx', payload); S.tx.push(o); }
     closeOv('#ov-add');
     S.month = String(o.date).slice(0, 7);
-    toast('ບັນທຶກແລ້ວ: ' + catName(o.category) + ' ' + fmt(o.amount, o.currency === 'LAK' ? 0 : 2) + ' ' + CUR[o.currency].sym);
+    toast((A.edit ? 'ແກ້ໄຂແລ້ວ: ' : 'ບັນທຶກແລ້ວ: ') + catName(o.category) + ' ' + fmt(o.amount, CUR[o.currency].dec) + ' ' + CUR[o.currency].sym);
     render();
-  } catch (e) { toast('ບັນທຶກບໍ່ສຳເລັດ: ' + errMsg(e)); btn.disabled = false; }
+  } catch (e) { toast((A.edit ? 'ແກ້ໄຂ' : 'ບັນທຶກ') + 'ບໍ່ສຳເລັດ: ' + errMsg(e)); btn.disabled = false; }
 }
 function closeOv(sel) { const ov = $(sel); ov.classList.remove('on'); ov.innerHTML = ''; if (sel === '#ov-add') S.add = null; if (sel === '#ov-slip') S.slip = null; }
 
@@ -794,13 +829,14 @@ async function saveSet() {
   catch (e) { toast('ບັນທຶກບໍ່ສຳເລັດ: ' + errMsg(e)); }
 }
 
-/* ===== Transaction sheet (view / delete) ===== */
+/* ===== Transaction sheet (view / edit / delete) ===== */
 function openTx(id) {
   const t = S.tx.find((x) => x.id === id); if (!t) return;
   const tn = catTint(t.category);
   $('#sheet').innerHTML = '<div class="row"><span class="ico" style="background:' + tn[0] + ';color:' + tn[1] + '">' + svg(IC[t.category] ? t.category : 'other', 20) + '</span><div class="col" style="flex:1;gap:2px"><b>' + esc(catName(t.category)) + '</b><span class="muted xs">' + esc(t.date + ' ' + (t.time || '')) + '</span></div>' + amtHtml(t) + '</div>' +
     (t.note ? '<div class="kv"><span>ບັນທຶກ</span><span>' + esc(t.note) + '</span></div>' : '') + (t.counterparty ? '<div class="kv"><span>ຄູ່ທຸລະກຳ</span><span>' + esc(t.counterparty) + '</span></div>' : '') + (t.ref ? '<div class="kv"><span>ເລກອ້າງອີງ</span><span>' + esc(t.ref) + '</span></div>' : '') +
-    '<div class="g2"><button class="btn light" data-act="sheetclose">ປິດ</button><button class="btn" style="background:var(--exp)" data-act="deltx" data-id="' + esc(t.id) + '">' + svg('trash', 18) + 'ລຶບ</button></div>';
+    '<button class="btn press" data-act="edittx" data-id="' + esc(t.id) + '">' + svg('pen', 18) + 'ແກ້ໄຂ (ຈຳນວນເງິນ, ໝວດ, ບັນທຶກ)</button>' +
+    '<div class="g2"><button class="btn light" data-act="sheetclose">ປິດ</button><button class="btn light" style="color:var(--exp)" data-act="deltx" data-id="' + esc(t.id) + '">' + svg('trash', 18) + 'ລຶບ</button></div>';
   $('#sheet-bg').classList.add('on');
 }
 async function delTx(id, btn) {
@@ -819,11 +855,10 @@ document.addEventListener('click', (e) => {
   else if (a === 'hide') document.body.classList.toggle('hide');
   else if (a === 'add') openAdd();
   else if (a === 'closeadd') closeOv('#ov-add');
-  else if (a === 'atype') { S.add.type = v; S.add.cat = v === 'inc' ? 'salary' : S.add.sug[0]; updateAdd(true, true); }
-  else if (a === 'acur') { S.add.cur = v; S.add.amount = ''; updateAdd(true); }
-  else if (a === 'atab') { S.add.tab = v; updateAdd(true, true); }
+  else if (a === 'atype') { if (S.add.type !== v) { S.add.type = v; S.add.cat = v === 'inc' ? 'salary' : S.add.sug[0]; } updateAdd(true); }
   else if (a === 'acat') { S.add.cat = v; updateAdd(true); }
-  else if (a === 'key') pressKey(v);
+  else if (a === 'edittx') { $('#sheet-bg').classList.remove('on'); openAdd(el.dataset.id); }
+  else if (a === 'rcur') { S.rcur = v; renderReport(); }
   else if (a === 'save') saveAdd();
   else if (a === 'slip') openSlip();
   else if (a === 'closeslip') closeOv('#ov-slip');

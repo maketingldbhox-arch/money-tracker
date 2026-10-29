@@ -26,7 +26,7 @@ const INC_CATS = {
  * POST body (text/plain): {"token":"...","fn":"getInit","args":[...]}
  * Set APP_TOKEN in Project Settings › Script Properties.
  */
-const API_FUNCS = { getInit: getInit, addTx: addTx, addTxBatch: addTxBatch, deleteTx: deleteTx, saveSettings: saveSettings, saveRule: saveRule, readSlip: readSlip, aiReport: aiReport };
+const API_FUNCS = { getInit: getInit, addTx: addTx, addTxBatch: addTxBatch, deleteTx: deleteTx, updateTx: updateTx, saveSettings: saveSettings, saveRule: saveRule, readSlip: readSlip, aiReport: aiReport };
 
 function json_(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
@@ -181,6 +181,35 @@ function addTxBatch(list) {
     });
     if (saved.length) sh.getRange(sh.getLastRow() + 1, 1, saved.length, TX_HEAD.length).setValues(saved.map(toRow_));
     return { saved: saved, skipped: skipped };
+  } finally { lock.releaseLock(); }
+}
+
+function updateTx(id, t) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sh = txSheet_();
+    const last = sh.getLastRow();
+    if (last < 2) throw new Error('ບໍ່ພົບລາຍການ');
+    const ids = sh.getRange(2, 1, last - 1, 1).getDisplayValues();
+    let row = -1;
+    for (let i = 0; i < ids.length; i++) { if (ids[i][0] === id) { row = i + 2; break; } }
+    if (row < 0) throw new Error('ບໍ່ພົບລາຍການ (ອາດຖືກລຶບແລ້ວ)');
+    const vals = sh.getRange(row, 1, 1, TX_HEAD.length).getDisplayValues()[0];
+    const old = {};
+    TX_HEAD.forEach(function (h, i) { old[h] = vals[i]; });
+    const o = cleanTx_(t, getSettings_());
+    if (o.currency === old.currency && Number(old.rate) > 0) {
+      o.rate = String(Number(old.rate));
+      o.amount_lak = String(Math.round(Number(o.amount) * Number(old.rate)));
+    }
+    o.id = id;
+    o.created_at = old.created_at || o.created_at;
+    o.ref = old.ref || '';
+    o.source = old.source || 'manual';
+    o.counterparty = old.counterparty || '';
+    sh.getRange(row, 1, 1, TX_HEAD.length).setValues([toRow_(o)]);
+    return o;
   } finally { lock.releaseLock(); }
 }
 
