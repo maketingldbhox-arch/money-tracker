@@ -10,7 +10,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-title" content="ລາຍຮັບ-ຈ່າຍ">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="config.js"></script>
 <title>ຈົດລາຍຮັບ-ລາຍຈ່າຍ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,7 +23,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 input::placeholder,textarea::placeholder{color:#7A7F87}
 .app{max-width:480px;margin:0 auto;padding-bottom:104px}
-.view{display:none;padding:20px 18px 24px;flex-direction:column;gap:14px}
+.view{display:none;padding:calc(20px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 24px calc(18px + env(safe-area-inset-left));flex-direction:column;gap:14px}
 .view.on{display:flex}
 .row{display:flex;align-items:center;gap:10px}.sb{justify-content:space-between}.col{display:flex;flex-direction:column;gap:4px}
 .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -69,7 +69,7 @@ nav.nav .fab{justify-self:center;width:58px;height:58px;margin-top:-20px;border-
 nav.nav .fab:active{transform:perspective(500px) rotateX(16deg) scale(.95)}
 .ov{position:fixed;inset:0;background:var(--bg);z-index:40;display:none;flex-direction:column}
 .ov.on{display:flex}
-.ov-body{flex:1;overflow-y:auto;width:100%;max-width:480px;margin:0 auto;padding:18px 18px 20px;display:flex;flex-direction:column;gap:12px}
+.ov-body{flex:1;overflow-y:auto;width:100%;max-width:480px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 20px calc(18px + env(safe-area-inset-left));display:flex;flex-direction:column;gap:12px}
 .ov-foot{width:100%;max-width:480px;margin:0 auto;background:#fff;border-radius:26px 26px 0 0;box-shadow:0 -6px 24px rgba(2,30,58,.08);padding:12px 18px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
 .keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .keys button{height:46px;border:none;border-radius:14px;background:var(--bg);font-size:21px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--navy)}
@@ -570,7 +570,7 @@ function resizeImage(file, max) {
     img.onload = () => {
       let w = img.naturalWidth, h = img.naturalHeight; const s = Math.min(1, (max || 1400) / Math.max(w, h)); w = Math.round(w * s); h = Math.round(h * s);
       const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h);
-      res({ url, b64: c.toDataURL('image/jpeg', 0.85).split(',')[1], mime: 'image/jpeg' });
+      res({ url, b64: c.toDataURL('image/jpeg', 0.8).split(',')[1], mime: 'image/jpeg' });
     };
     img.onerror = () => rej(new Error('ອ່ານຮູບບໍ່ໄດ້'));
     img.src = url;
@@ -578,37 +578,45 @@ function resizeImage(file, max) {
 }
 function slipFiles(files) {
   const room = 20 - S.slip.items.length;
-  Array.prototype.slice.call(files, 0, Math.max(room, 0)).forEach((f) => S.slip.items.push({ file: f, url: URL.createObjectURL(f), status: 'wait' }));
+  Array.prototype.slice.call(files, 0, Math.max(room, 0)).forEach((f) => { const it = { file: f, url: URL.createObjectURL(f), status: 'wait' }; it.prep = resizeImage(f, 1024); it.prep.catch(() => { }); S.slip.items.push(it); });
   if (files.length > room) toast('ເລືອກໄດ້ສູງສຸດ 20 ຮູບຕໍ່ຄັ້ງ');
   renderSlip();
 }
+async function readOneSlip(it) {
+  it.status = 'busy'; renderSlip();
+  try {
+    const img = await (it.prep || resizeImage(it.file, 1024));
+    const d = await api('readSlip', img.b64, img.mime, S.settings.owner_name || '');
+    it.data = d;
+    it.type = d.suggested_type === 'inc' ? 'inc' : 'exp';
+    it.cat = d.suggested_category;
+    const cp = String(d.counterparty || '').toUpperCase();
+    const rule = cp && S.rules.find((r) => r.match && cp.indexOf(String(r.match).toUpperCase()) >= 0);
+    if (rule) { it.type = rule.type === 'inc' ? 'inc' : 'exp'; it.cat = rule.category; it.ruled = true; }
+    if ((it.type === 'exp' ? EXP_IDS : INC_IDS).indexOf(it.cat) < 0) it.cat = it.type === 'exp' ? 'other' : 'other_inc';
+    it.remember = false;
+    it.status = 'ok';
+  } catch (e) { it.status = 'err'; it.err = errMsg(e); it.skip = true; }
+  if (S.slip) renderSlip();
+}
 async function slipRead() {
-  const SL = S.slip; SL.step = 'read'; renderSlip();
+  const SL = S.slip; SL.step = 'read'; SL.t0 = Date.now(); renderSlip();
+  // read up to 4 slips at the same time
+  const tick = setInterval(() => { if (S.slip === SL && SL.step === 'read') renderSlip(); else clearInterval(tick); }, 1000);
+  let next = 0;
+  const worker = async () => { while (S.slip === SL && next < SL.items.length) { await readOneSlip(SL.items[next++]); } };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  clearInterval(tick);
+  if (S.slip !== SL) return;
   const refs = {}; S.tx.forEach((t) => { if (t.ref) refs[t.ref] = 1; });
-  for (let i = 0; i < SL.items.length; i++) {
-    const it = SL.items[i]; if (!S.slip) return;
-    it.status = 'busy'; renderSlip();
-    try {
-      const img = await resizeImage(it.file, 1400);
-      const d = await api('readSlip', img.b64, img.mime, S.settings.owner_name || '');
-      it.data = d;
-      it.type = d.suggested_type === 'inc' ? 'inc' : 'exp';
-      it.cat = d.suggested_category;
-      const cp = String(d.counterparty || '').toUpperCase();
-      const rule = cp && S.rules.find((r) => r.match && cp.indexOf(String(r.match).toUpperCase()) >= 0);
-      if (rule) { it.type = rule.type === 'inc' ? 'inc' : 'exp'; it.cat = rule.category; it.ruled = true; }
-      if ((it.type === 'exp' ? EXP_IDS : INC_IDS).indexOf(it.cat) < 0) it.cat = it.type === 'exp' ? 'other' : 'other_inc';
-      it.dup = !!(d.ref && refs[d.ref]);
-      if (d.ref) refs[d.ref] = 1;
-      it.skip = it.dup || !d.amount;
-      it.remember = false;
-      it.status = 'ok';
-    } catch (e) { it.status = 'err'; it.err = errMsg(e); it.skip = true; }
-    renderSlip();
-  }
-  if (!S.slip) return;
+  SL.items.forEach((it) => {
+    if (it.status !== 'ok') return;
+    it.dup = !!(it.data.ref && refs[it.data.ref]);
+    if (it.data.ref) refs[it.data.ref] = 1;
+    it.skip = it.dup || !it.data.amount;
+  });
   const okIdx = SL.items.findIndex((x) => x.status === 'ok');
-  if (okIdx < 0) { SL.step = 'read'; renderSlip(); toast('ອ່ານສະລິບບໍ່ສຳເລັດ'); return; }
+  if (okIdx < 0) { SL.step = 'pick'; SL.items.forEach((x) => { if (x.status === 'err') x.status = 'wait'; }); renderSlip(); toast('ອ່ານສະລິບບໍ່ສຳເລັດ, ລອງໃໝ່ອີກຄັ້ງ'); return; }
   SL.step = 'review'; SL.idx = okIdx; renderSlip();
 }
 function slipNav(dir) {
@@ -650,7 +658,7 @@ function renderSlip() {
         (reading ? '' : '<button class="rm" data-act="sliprm" data-i="' + i + '" aria-label="ລຶບຮູບທີ ' + (i + 1) + '">' + svg('x', 12, 3) + '</button>') + '</div>').join('') + '</div>' : '') +
       (SL.items.some((x) => x.status === 'err') ? '<div class="warn">' + esc((SL.items.find((x) => x.status === 'err') || {}).err) + '</div>' : '');
     const done = SL.items.filter((x) => x.status === 'ok' || x.status === 'err').length;
-    foot = reading ? '<button class="btn" disabled>' + svg('spark', 18) + 'AI ກຳລັງອ່ານ ' + done + '/' + SL.items.length + '…</button>'
+    foot = reading ? '<button class="btn" disabled>' + svg('spark', 18) + 'AI ກຳລັງອ່ານ ' + done + '/' + SL.items.length + ' · ' + Math.round((Date.now() - (SL.t0 || Date.now())) / 1000) + ' ວິ…</button>'
       : '<button class="btn press" data-act="slipread"' + (SL.items.length ? '' : ' disabled') + '>' + svg('spark', 18) + 'ໃຫ້ AI ອ່ານ ' + SL.items.length + ' ສະລິບ</button>';
   } else if (SL.step === 'review') {
     const okItems = SL.items.filter((x) => x.status === 'ok');

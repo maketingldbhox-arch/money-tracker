@@ -193,33 +193,67 @@ function saveRule(rule) {
 }
 
 /* ---------- Gemini ---------- */
+/* Fast models first. GEMINI_MODEL (Script Property) overrides; the last model that worked is remembered. */
+const GEMINI_FALLBACK = ['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'];
+
+function thinkingFor_(model) {
+  if (/2\.5/.test(model)) return { thinkingBudget: 0 };          // Gemini 2.5: turn thinking off
+  if (/flash|lite/.test(model)) return { thinkingLevel: 'minimal' }; // newer models: least thinking
+  return null;
+}
+
+function callModel_(key, model, parts, asJson, withThinking) {
+  const gen = asJson ? { responseMimeType: 'application/json', temperature: 0.1 } : { temperature: 0.4 };
+  const th = withThinking ? thinkingFor_(model) : null;
+  if (th) gen.thinkingConfig = th;
+  const res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+    method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key },
+    payload: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: gen }), muteHttpExceptions: true
+  });
+  const code = res.getResponseCode();
+  let data = {};
+  try { data = JSON.parse(res.getContentText()); } catch (e) { }
+  if (code === 200) {
+    const c = data.candidates && data.candidates[0];
+    return { ok: true, text: c && c.content && c.content.parts ? c.content.parts.map(function (p) { return p.text || ''; }).join('') : '' };
+  }
+  return { ok: false, code: code, error: (data.error && data.error.message) || ('Gemini error ' + code) };
+}
+
 function gemini_(parts, asJson) {
   const props = PropertiesService.getScriptProperties();
   const key = props.getProperty('GEMINI_API_KEY');
   if (!key) throw new Error('ຍັງບໍ່ໄດ້ຕັ້ງ GEMINI_API_KEY ໃນ Script Properties');
-  const models = [props.getProperty('GEMINI_MODEL'), 'gemini-flash-latest', 'gemini-2.5-flash'].filter(function (m) { return !!m; });
-  const body = {
-    contents: [{ role: 'user', parts: parts }],
-    generationConfig: asJson ? { responseMimeType: 'application/json', temperature: 0.1 } : { temperature: 0.4 }
-  };
+  const cache = CacheService.getScriptCache();
+  const remembered = cache.get('gemini_ok_model');
+  const models = [props.getProperty('GEMINI_MODEL'), remembered].concat(GEMINI_FALLBACK)
+    .filter(function (m, i, a) { return !!m && a.indexOf(m) === i; });
   let lastErr = '';
   for (let i = 0; i < models.length; i++) {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent';
-    const res = UrlFetchApp.fetch(url, {
-      method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key },
-      payload: JSON.stringify(body), muteHttpExceptions: true
-    });
-    const code = res.getResponseCode();
-    let data = {};
-    try { data = JSON.parse(res.getContentText()); } catch (e) { }
-    if (code === 200) {
-      const c = data.candidates && data.candidates[0];
-      return c && c.content && c.content.parts ? c.content.parts.map(function (p) { return p.text || ''; }).join('') : '';
-    }
-    lastErr = (data.error && data.error.message) || ('Gemini error ' + code);
-    if (code !== 404 && code !== 400) break; // ລອງໂມເດວຖັດໄປສະເພາະເມື່ອຊື່ໂມເດວໃຊ້ບໍ່ໄດ້
+    let r = callModel_(key, models[i], parts, asJson, true);
+    if (!r.ok && r.code === 400 && /think/i.test(r.error)) r = callModel_(key, models[i], parts, asJson, false);
+    if (r.ok) { if (remembered !== models[i]) cache.put('gemini_ok_model', models[i], 21600); return r.text; }
+    lastErr = r.error;
+    if (r.code !== 404 && r.code !== 400) break; // try the next model only when this model name is unavailable
   }
   throw new Error(lastErr);
+}
+
+/* Run from the editor to see which Gemini models this key can use and how fast each answers. */
+function geminiBenchmark() {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  const list = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key }, muteHttpExceptions: true });
+  const names = ((JSON.parse(list.getContentText()).models) || [])
+    .filter(function (m) { return (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0; })
+    .map(function (m) { return m.name.replace('models/', ''); })
+    .filter(function (n) { return /flash/.test(n); });
+  Logger.log('FLASH MODELS: ' + names.join(', '));
+  GEMINI_FALLBACK.forEach(function (m) {
+    const t = Date.now();
+    let r = callModel_(key, m, [{ text: 'Reply with the word OK' }], false, true);
+    if (!r.ok && r.code === 400 && /think/i.test(r.error)) r = callModel_(key, m, [{ text: 'Reply with the word OK' }], false, false);
+    Logger.log(m + ': ' + (r.ok ? (Date.now() - t) + ' ms' : 'ERR ' + r.code + ' ' + r.error));
+  });
 }
 
 function parseJson_(text) {
