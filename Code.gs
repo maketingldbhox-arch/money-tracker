@@ -113,13 +113,38 @@ function cleanTx_(t, settings) {
   };
 }
 
-function toRow_(o) { return TX_HEAD.map(function (h) { return o[h] === undefined ? '' : o[h]; }); }
+
+/* Column E (category) is stored in Lao in the sheet; the app still works with ids. */
+const CAT_LAO = Object.assign({}, EXP_CATS, INC_CATS, { online: 'ຊື້ເຄື່ອງອອນລາຍ', pass: 'ເງິນຜ່ານມື' });
+const CAT_ID_BY_NAME = (function () {
+  const m = {};
+  [EXP_CATS, INC_CATS, CAT_LAO].forEach(function (src) { Object.keys(src).forEach(function (k) { m[String(src[k]).trim()] = k; m[k] = k; }); });
+  m['Shopping Online'] = 'online';
+  return m;
+})();
+function catToLao_(id) { return CAT_LAO[id] || id; }
+function catToId_(v) { const k = String(v || '').trim(); return CAT_ID_BY_NAME[k] || k; }
+function migrateCatsToLao_() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('CAT_LAO_V1')) return;
+  const sh = txSheet_(); const last = sh.getLastRow();
+  if (last >= 2) {
+    const col = TX_HEAD.indexOf('category') + 1;
+    const rg = sh.getRange(2, col, last - 1, 1); const vals = rg.getDisplayValues();
+    let changed = false;
+    const out = vals.map(function (r) { const lao = catToLao_(catToId_(r[0])); if (lao !== r[0]) changed = true; return [lao]; });
+    if (changed) rg.setValues(out);
+  }
+  props.setProperty('CAT_LAO_V1', '1');
+}
+
+function toRow_(o) { return TX_HEAD.map(function (h) { if (h === 'category') return catToLao_(o[h]); return o[h] === undefined ? '' : o[h]; }); }
 
 /* ---------- API (called by google.script.run) ---------- */
 function getInit() {
   const props = PropertiesService.getScriptProperties();
   return {
-    tx: readRows_(txSheet_()),
+    tx: (function () { try { migrateCatsToLao_(); } catch (e) {} return readRows_(txSheet_()).map(function (r) { r.category = catToId_(r.category); return r; }); })(),
     settings: getSettings_(),
     rules: readRows_(sheet_(SHEET_RULES, ['match', 'type', 'category'])),
     aiKey: !!props.getProperty('GEMINI_API_KEY'),
@@ -193,67 +218,33 @@ function saveRule(rule) {
 }
 
 /* ---------- Gemini ---------- */
-/* Fast models first. GEMINI_MODEL (Script Property) overrides; the last model that worked is remembered. */
-const GEMINI_FALLBACK = ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'];
-
-function thinkingFor_(model) {
-  if (/2\.5/.test(model)) return { thinkingBudget: 0 };          // Gemini 2.5: turn thinking off
-  if (/flash|lite/.test(model)) return { thinkingLevel: 'minimal' }; // newer models: least thinking
-  return null;
-}
-
-function callModel_(key, model, parts, asJson, withThinking) {
-  const gen = asJson ? { responseMimeType: 'application/json', temperature: 0.1 } : { temperature: 0.4 };
-  const th = withThinking ? thinkingFor_(model) : null;
-  if (th) gen.thinkingConfig = th;
-  const res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
-    method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key },
-    payload: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: gen }), muteHttpExceptions: true
-  });
-  const code = res.getResponseCode();
-  let data = {};
-  try { data = JSON.parse(res.getContentText()); } catch (e) { }
-  if (code === 200) {
-    const c = data.candidates && data.candidates[0];
-    return { ok: true, text: c && c.content && c.content.parts ? c.content.parts.map(function (p) { return p.text || ''; }).join('') : '' };
-  }
-  return { ok: false, code: code, error: (data.error && data.error.message) || ('Gemini error ' + code) };
-}
-
 function gemini_(parts, asJson) {
   const props = PropertiesService.getScriptProperties();
   const key = props.getProperty('GEMINI_API_KEY');
   if (!key) throw new Error('ຍັງບໍ່ໄດ້ຕັ້ງ GEMINI_API_KEY ໃນ Script Properties');
-  const cache = CacheService.getScriptCache();
-  const remembered = cache.get('gemini_ok_model');
-  const models = [props.getProperty('GEMINI_MODEL'), remembered].concat(GEMINI_FALLBACK)
-    .filter(function (m, i, a) { return !!m && a.indexOf(m) === i; });
+  const models = [props.getProperty('GEMINI_MODEL'), 'gemini-flash-latest', 'gemini-2.5-flash'].filter(function (m) { return !!m; });
+  const body = {
+    contents: [{ role: 'user', parts: parts }],
+    generationConfig: asJson ? { responseMimeType: 'application/json', temperature: 0.1 } : { temperature: 0.4 }
+  };
   let lastErr = '';
   for (let i = 0; i < models.length; i++) {
-    let r = callModel_(key, models[i], parts, asJson, true);
-    if (!r.ok && r.code === 400 && /think/i.test(r.error)) r = callModel_(key, models[i], parts, asJson, false);
-    if (r.ok) { if (remembered !== models[i]) cache.put('gemini_ok_model', models[i], 21600); return r.text; }
-    lastErr = r.error;
-    if ([400, 404, 429, 500, 503].indexOf(r.code) < 0) break; // next model when this one is unavailable or busy
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent';
+    const res = UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key },
+      payload: JSON.stringify(body), muteHttpExceptions: true
+    });
+    const code = res.getResponseCode();
+    let data = {};
+    try { data = JSON.parse(res.getContentText()); } catch (e) { }
+    if (code === 200) {
+      const c = data.candidates && data.candidates[0];
+      return c && c.content && c.content.parts ? c.content.parts.map(function (p) { return p.text || ''; }).join('') : '';
+    }
+    lastErr = (data.error && data.error.message) || ('Gemini error ' + code);
+    if (code !== 404 && code !== 400) break; // ລອງໂມເດວຖັດໄປສະເພາະເມື່ອຊື່ໂມເດວໃຊ້ບໍ່ໄດ້
   }
   throw new Error(lastErr);
-}
-
-/* Run from the editor to see which Gemini models this key can use and how fast each answers. */
-function geminiBenchmark() {
-  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-  const list = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key }, muteHttpExceptions: true });
-  const names = ((JSON.parse(list.getContentText()).models) || [])
-    .filter(function (m) { return (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0; })
-    .map(function (m) { return m.name.replace('models/', ''); })
-    .filter(function (n) { return /flash/.test(n); });
-  Logger.log('FLASH MODELS: ' + names.join(', '));
-  GEMINI_FALLBACK.forEach(function (m) {
-    const t = Date.now();
-    let r = callModel_(key, m, [{ text: 'Reply with the word OK' }], false, true);
-    if (!r.ok && r.code === 400 && /think/i.test(r.error)) r = callModel_(key, m, [{ text: 'Reply with the word OK' }], false, false);
-    Logger.log(m + ': ' + (r.ok ? (Date.now() - t) + ' ms' : 'ERR ' + r.code + ' ' + r.error));
-  });
 }
 
 function parseJson_(text) {

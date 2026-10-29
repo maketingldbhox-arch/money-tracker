@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#021e3a">
+<meta name="theme-color" content="#E9EFF7">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.webmanifest">
@@ -129,6 +129,78 @@ nav.nav .fab:active{transform:perspective(500px) rotateX(16deg) scale(.95)}
 .press{transition:transform .15s}.press:active{transform:perspective(500px) rotateX(12deg) translateY(2px) scale(.96)}
 .d1{animation-delay:.05s}.d2{animation-delay:.1s}.d3{animation-delay:.15s}.d4{animation-delay:.2s}.d5{animation-delay:.25s}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* ===== Liquid Glass theme (iOS-style, adjustable) ===== */
+:root{--ga:.42;--gblur:24px;
+--gfill:rgba(255,255,255,var(--ga));--gfill2:rgba(255,255,255,calc(var(--ga) + .18));
+--sheen:linear-gradient(155deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 38%,rgba(255,255,255,0) 60%,rgba(255,255,255,.18) 100%);
+--gf:blur(var(--gblur)) saturate(190%) brightness(1.04);
+--ghi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.35),inset 1px 0 0 rgba(255,255,255,.4),inset -1px 0 0 rgba(255,255,255,.25);
+--gsh:0 12px 32px -14px rgba(20,40,80,.28),0 2px 6px -2px rgba(20,40,80,.08);
+--acc:linear-gradient(170deg,rgba(222,250,150,.95),rgba(186,232,86,.86));--accfg:#0B2742;
+--navy:#0B2742}
+html{background:#E9EFF7}
+body{background:transparent;min-height:100vh}
+:root{--mesh:radial-gradient(28% 22% at 18% 12%,rgba(64,132,255,.55),transparent 70%),radial-gradient(26% 22% at 86% 16%,rgba(190,240,90,.75),transparent 70%),radial-gradient(30% 26% at 80% 62%,rgba(255,150,110,.45),transparent 70%),radial-gradient(30% 26% at 12% 70%,rgba(150,120,255,.38),transparent 70%),radial-gradient(26% 20% at 50% 96%,rgba(60,200,220,.40),transparent 70%)}
+body::before{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;background:var(--mesh);filter:blur(10px);animation:meshMove 26s ease-in-out infinite alternate}
+@keyframes meshMove{0%{transform:translate3d(0,0,0) rotate(0)}50%{transform:translate3d(-3%,2%,0) rotate(6deg)}100%{transform:translate3d(3%,-2%,0) rotate(-5deg)}}
+.app{padding-bottom:120px}
+.view>*,.ov-body>*{flex-shrink:0}
+/* base glass surfaces */
+.card,.field,.bubble,.act,.chip,.curs button,.ib:not(.ghost),.keys button,.thumb,.warn,.btn.light{background:var(--sheen),var(--gfill);-webkit-backdrop-filter:var(--gf);backdrop-filter:var(--gf);border:1px solid rgba(255,255,255,.55);box-shadow:var(--ghi),var(--gsh)}
+.card{border-radius:28px}.field{border-radius:20px}.ib:not(.ghost){border-radius:50%}.thumb{border-radius:18px}
+.chip,.curs button{border-radius:999px}.act,.btn{border-radius:999px}
+.keys button{border-radius:20px;box-shadow:var(--ghi),0 4px 10px -6px rgba(20,40,80,.25)}
+.chip .cnt{background:rgba(11,39,66,.08)}
+/* selected = brighter, thicker glass */
+.chip.on,.curs button.on{background:var(--sheen),rgba(255,255,255,calc(var(--ga) + .4));color:var(--navy);border:1px solid rgba(255,255,255,.95);box-shadow:var(--ghi),0 0 0 1.5px rgba(11,39,66,.55),0 10px 22px -10px rgba(20,40,80,.4)}
+.curs button.on i{color:#5A8F00}
+.chip.on .cnt{background:var(--acc);color:var(--accfg)}
+.seg{background:rgba(255,255,255,calc(var(--ga) - .12));-webkit-backdrop-filter:var(--gf);backdrop-filter:var(--gf);border:1px solid rgba(255,255,255,.5);box-shadow:inset 0 1px 2px rgba(20,40,80,.12);border-radius:999px;padding:5px}
+.seg button{border-radius:999px}
+.seg button.on{background:var(--sheen),rgba(255,255,255,.92);color:var(--navy);font-weight:700;box-shadow:var(--ghi),0 6px 16px -6px rgba(20,40,80,.35)}
+/* prominent (tinted) glass: lime */
+.btn,.act.dark{background:var(--sheen),var(--acc);color:var(--accfg);border:1px solid rgba(255,255,255,.7);-webkit-backdrop-filter:var(--gf);backdrop-filter:var(--gf);box-shadow:var(--ghi),0 12px 26px -12px rgba(90,140,0,.55)}
+.btn svg,.act.dark svg{color:var(--accfg)}
+.cat .ci{box-shadow:var(--ghi),0 6px 14px -8px rgba(20,40,80,.3);border:1px solid rgba(255,255,255,.6)}
+.cat.on .ci{background:var(--sheen),var(--acc)!important;color:var(--accfg)!important;box-shadow:var(--ghi),0 0 0 1.5px rgba(11,39,66,.5),0 12px 20px -8px rgba(90,140,0,.55)!important}
+.badge{background:#fff;border-color:rgba(255,255,255,.9)}
+.ico{box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+.ico.accent{background:var(--sheen),var(--acc)!important;color:var(--accfg)!important;border:1px solid rgba(255,255,255,.7)}
+/* hero: clear glass instead of solid navy */
+.hero{background:var(--sheen),linear-gradient(135deg,rgba(255,255,255,calc(var(--ga) + .12)),rgba(255,255,255,calc(var(--ga) - .1)));color:var(--navy);-webkit-backdrop-filter:var(--gf);backdrop-filter:var(--gf);border:1px solid rgba(255,255,255,.7);border-radius:32px;box-shadow:var(--ghi),0 24px 50px -24px rgba(20,40,80,.45)}
+.hero .unit,.hero .hmut,.hmut{color:var(--muted)}
+.hero .ib.ghost{color:var(--muted)}
+.tile{background:rgba(255,255,255,.32);border:1px solid rgba(255,255,255,.6);box-shadow:var(--ghi);border-radius:20px}
+.incL{color:var(--inc)}.expL{color:var(--exp)}
+.shine{background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.55),rgba(255,255,255,0))}
+.tx{border-top-color:rgba(11,39,66,.07)}
+.warn{background:var(--sheen),rgba(255,236,200,calc(var(--ga) + .1));border-radius:20px}
+/* floating capsule tab bar */
+nav.nav{left:12px;right:12px;width:auto;max-width:456px;margin:0 auto;transform:none;bottom:calc(10px + env(safe-area-inset-bottom));height:68px;padding:6px;border-radius:34px;align-items:center;
+background:var(--sheen),rgba(255,255,255,calc(var(--ga) + .14));-webkit-backdrop-filter:var(--gf);backdrop-filter:var(--gf);border:1px solid rgba(255,255,255,.65);box-shadow:var(--ghi),0 18px 40px -16px rgba(20,40,80,.38)}
+nav.nav button{min-height:56px;border-radius:28px;transition:background .3s,transform .3s}
+nav.nav button.on{background:rgba(255,255,255,.7);box-shadow:var(--ghi),0 4px 12px -6px rgba(20,40,80,.3)}
+nav.nav button:active{transform:scale(1.08)}
+nav.nav .fab{width:56px;height:56px;margin-top:0;border-radius:50%;background:var(--sheen),var(--acc);color:var(--accfg);border:1px solid rgba(255,255,255,.75);box-shadow:var(--ghi),0 10px 22px -8px rgba(90,140,0,.6)}
+nav.nav .fab:active{transform:scale(1.12)}
+/* overlays & sheets */
+.ov{background:transparent}
+.ov.on::before{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;background:var(--mesh),#E9EFF7;filter:blur(10px)}
+.ov{isolation:isolate}
+.ov-foot{background:var(--sheen),rgba(255,255,255,calc(var(--ga) + .1));-webkit-backdrop-filter:var(--gf);backdrop-filter:var(--gf);border:1px solid rgba(255,255,255,.65);border-bottom:none;box-shadow:var(--ghi),0 -10px 30px -14px rgba(20,40,80,.25);border-radius:32px 32px 0 0}
+.sheet-bg{background:rgba(20,40,80,.18);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.sheet{border-radius:32px 32px 0 0;background:var(--sheen),rgba(255,255,255,calc(var(--ga) + .3));-webkit-backdrop-filter:var(--gf);backdrop-filter:var(--gf);border:1px solid rgba(255,255,255,.7);box-shadow:var(--ghi)}
+#toast{bottom:calc(92px + env(safe-area-inset-bottom));background:rgba(30,42,60,.55);-webkit-backdrop-filter:var(--gf);backdrop-filter:var(--gf);border:1px solid rgba(255,255,255,.25);border-radius:22px;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 24px -10px rgba(0,0,0,.4)}
+#loading{background:#E9EFF7}
+.spin{background:var(--acc);border-radius:50%}
+.bubble{border-radius:6px 22px 22px 22px}
+.ubub{background:var(--sheen),rgba(37,99,201,.78);color:#fff;-webkit-backdrop-filter:var(--gf);backdrop-filter:var(--gf);border:1px solid rgba(255,255,255,.4);border-radius:22px 22px 6px 22px;box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+.thumb .rm{background:rgba(30,42,60,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.pg div{background:rgba(11,39,66,.12)}.pg div.on{background:var(--inc)}
+.press:active{transform:scale(1.04);filter:brightness(1.06)}
+/* glass control in settings */
+.gl-range{width:100%;accent-color:#5A8F00;height:32px}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--ga:.85}}
 </style>
 </head>
 <body>
@@ -177,6 +249,7 @@ const IC = {
   left: 'm15 6-6 6 6 6', right: 'm9 6 6 6-6 6',
   cam: 'M4 8h3l2-3h6l2 3h3v12H4z' + ring(12, 13, 3.5),
   x: 'M6 6l12 12M18 6 6 18', bksp: 'M9 5h11v14H9l-6-7zM13 9.5l5 5M18 9.5l-5 5',
+  pen: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
   check: 'm5 12 5 5 9-10', trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   search: ring(11, 11, 7) + 'M20 20l-3.5-3.5', img: 'M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5' + ring(15.5, 8.5, 1.5),
   send: 'M4 12 20 4l-6 16-3-7z', sheet: 'M4 4h16v16H4zM4 9h16M4 14h16M10 4v16',
@@ -259,7 +332,7 @@ function api(fn) {
 function showTokenScreen(msg) {
   const L = $('#loading');
   L.style.display = 'flex';
-  L.innerHTML = '<div class="card" style="width:min(360px,90vw);gap:14px"><span class="ico" style="width:52px;height:52px;background:var(--navy);color:var(--lime)">' + svg('spark', 26) + '</span><h1 class="h2" style="font-size:18px">ຈົດລາຍຮັບ-ລາຍຈ່າຍ</h1><span class="muted sm" style="line-height:1.6">ໃສ່ລະຫັດເຂົ້າໃຊ້ ເພື່ອເຊື່ອມກັບ Google Sheets ຂອງເຈົ້າ (ໃສ່ຄັ້ງດຽວ).</span>' +
+  L.innerHTML = '<div class="card" style="width:min(360px,90vw);gap:14px"><span class="ico accent" style="width:52px;height:52px">' + svg('spark', 26) + '</span><h1 class="h2" style="font-size:18px">ຈົດລາຍຮັບ-ລາຍຈ່າຍ</h1><span class="muted sm" style="line-height:1.6">ໃສ່ລະຫັດເຂົ້າໃຊ້ ເພື່ອເຊື່ອມກັບ Google Sheets ຂອງເຈົ້າ (ໃສ່ຄັ້ງດຽວ).</span>' +
     (msg ? '<div class="warn">' + esc(msg) + '</div>' : '') +
     '<label class="field"><input id="tok" type="password" autocomplete="off" placeholder="ລະຫັດເຂົ້າໃຊ້" aria-label="ລະຫັດເຂົ້າໃຊ້"></label><button class="btn" id="tok-save">' + svg('check', 18, 2.4) + 'ເຂົ້າໃຊ້</button></div>';
   $('#tok-save').addEventListener('click', () => { const t = $('#tok').value.trim(); if (t) { setToken(t); location.reload(); } });
@@ -445,13 +518,13 @@ function mdLite(t) { return esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
 function renderAI() {
   const ready = S.aiKey && !S.demo;
   $('#v-ai').innerHTML =
-    '<header class="row r3d" style="gap:12px"><span class="ico" style="width:44px;height:44px;background:var(--navy);color:var(--lime)">' + svg('spark', 22) + '</span><div class="col" style="gap:0;flex:1"><h1 class="h1" style="font-size:19px">ຜູ້ຊ່ວຍການເງິນ AI</h1><span class="muted xs">ວິເຄາະຈາກຂໍ້ມູນໃນ Google Sheets ຂອງເຈົ້າ</span></div></header>' +
+    '<header class="row r3d" style="gap:12px"><span class="ico accent" style="width:44px;height:44px">' + svg('spark', 22) + '</span><div class="col" style="gap:0;flex:1"><h1 class="h1" style="font-size:19px">ຜູ້ຊ່ວຍການເງິນ AI</h1><span class="muted xs">ວິເຄາະຈາກຂໍ້ມູນໃນ Google Sheets ຂອງເຈົ້າ</span></div></header>' +
     monthBar('r3d d1') +
     (ready ? '' : '<div class="warn r3d d2">' + (S.demo ? 'AI ໃຊ້ໄດ້ເມື່ອເປີດ app ຜ່ານລິ້ງ Apps Script.' : 'ຍັງບໍ່ໄດ້ຕັ້ງ GEMINI_API_KEY. ໄປທີ່ Apps Script › Project Settings › Script Properties ແລ້ວເພີ່ມ GEMINI_API_KEY.') + '</div>') +
     '<button class="btn press r3d d2" data-act="aireport"' + (ready && !S.aiBusy ? '' : ' disabled') + '>' + svg('spark', 18) + (S.aiBusy ? 'ກຳລັງວິເຄາະ…' : 'ສ້າງລາຍງານ ' + monthLabel(S.month)) + '</button>' +
     '<div class="col" style="gap:10px" id="ai-log">' + S.ai.map((m) => m.role === 'user' ? '<div class="ubub">' + esc(m.text) + '</div>' : '<div class="bubble flipIn">' + mdLite(m.text) + '</div>').join('') + '</div>' +
     '<div class="chips">' + ['ເດືອນນີ້ໃຊ້ຫຍັງຫຼາຍສຸດ?', 'ທຽບກັບເດືອນກ່ອນ', 'ແນະນຳວິທີປະຢັດ', 'ທ້າຍເດືອນຈະເຫຼືອເທົ່າໃດ?'].map((q) => '<button class="chip" data-act="aiask" data-q="' + esc(q) + '"' + (ready ? '' : ' disabled') + '>' + q + '</button>').join('') + '</div>' +
-    '<div class="row"><label class="field" style="flex:1"><input id="ai-q" placeholder="ຖາມກ່ຽວກັບການໃຊ້ເງິນ…" aria-label="ຄຳຖາມ"' + (ready ? '' : ' disabled') + '></label><button class="ib" style="background:var(--navy);color:var(--lime);border:none;width:48px;height:48px" data-act="aisend" aria-label="ສົ່ງ"' + (ready ? '' : ' disabled') + '>' + svg('send', 20) + '</button></div>';
+    '<div class="row"><label class="field" style="flex:1"><input id="ai-q" placeholder="ຖາມກ່ຽວກັບການໃຊ້ເງິນ…" aria-label="ຄຳຖາມ"' + (ready ? '' : ' disabled') + '></label><button class="ib" style="background:var(--sheen),var(--acc);color:var(--accfg);width:48px;height:48px" data-act="aisend" aria-label="ສົ່ງ"' + (ready ? '' : ' disabled') + '>' + svg('send', 20) + '</button></div>';
 }
 async function askAI(question) {
   if (S.aiBusy) return;
@@ -484,7 +557,7 @@ function openAdd() {
   const ov = $('#ov-add');
   ov.innerHTML =
     '<div class="ov-body">' +
-    '<header class="row sb r3d"><button class="ib" data-act="closeadd" aria-label="ປິດ">' + svg('x', 18, 2) + '</button><h1 class="h2" style="font-size:17px">ເພີ່ມລາຍການ</h1><button class="ib" data-act="slip" aria-label="ສະແກນສະລິບ" style="background:var(--navy);color:var(--lime);border:none">' + svg('cam', 20) + '</button></header>' +
+    '<header class="row sb r3d"><button class="ib" data-act="closeadd" aria-label="ປິດ">' + svg('x', 18, 2) + '</button><h1 class="h2" style="font-size:17px">ເພີ່ມລາຍການ</h1><button class="ib" data-act="slip" aria-label="ສະແກນສະລິບ" style="background:var(--sheen),var(--acc);color:var(--accfg)">' + svg('cam', 20) + '</button></header>' +
     '<div class="seg r3d d1" style="grid-template-columns:repeat(2,minmax(0,1fr))" id="add-type"></div>' +
     '<div class="col r3d d2" style="align-items:center;gap:2px"><output id="add-amt" class="amtbig" aria-live="polite"></output><span class="muted xs" id="add-conv"></span></div>' +
     '<div class="curs r3d d2" id="add-cur" role="group" aria-label="ສະກຸນເງິນ"></div>' +
@@ -630,7 +703,7 @@ async function slipSave() {
   const SL = S.slip;
   const list = SL.items.filter((x) => x.status === 'ok' && !x.skip).map((x) => ({
     type: x.type, category: x.cat, amount: x.data.amount, currency: x.data.currency, date: /^\d{4}-\d{2}-\d{2}$/.test(x.data.date || '') ? x.data.date : todayStr(),
-    time: /^\d{2}:\d{2}$/.test(x.data.time || '') ? x.data.time : '', note: x.data.memo || '', ref: x.data.ref || '', counterparty: x.data.counterparty || '', source: 'slip'
+    time: /^\d{2}:\d{2}$/.test(x.data.time || '') ? x.data.time : '', note: (x.note != null ? x.note : x.data.memo || '').trim(), ref: x.data.ref || '', counterparty: x.data.counterparty || '', source: 'slip'
   }));
   if (!list.length) { toast('ບໍ່ມີລາຍການທີ່ຈະບັນທຶກ'); return; }
   const btn = document.querySelector('[data-act="slipsave"]'); if (btn) btn.disabled = true;
@@ -651,7 +724,7 @@ function renderSlip() {
   if (SL.step === 'pick' || SL.step === 'read') {
     const reading = SL.step === 'read';
     body = head('ນຳເຂົ້າສະລິບ', 'closeslip') +
-      (reading ? '' : '<label for="slip-file" class="card r3d" style="border:2px dashed #CFCCC5;align-items:center;text-align:center;cursor:pointer"><span class="ico float3d" style="width:52px;height:52px;background:var(--navy);color:var(--lime)">' + svg('img', 26) + '</span><b class="sm">ແຕະເພື່ອເລືອກຮູບສະລິບ (ໄດ້ຫຼາຍຮູບພ້ອມກັນ)</b><span class="muted xs">BCEL One, LDB Trust ຫຼື ສະລິບທະນາຄານອື່ນ · ສູງສຸດ 20 ຮູບ</span></label>') +
+      (reading ? '' : '<label for="slip-file" class="card r3d" style="border:2px dashed #CFCCC5;align-items:center;text-align:center;cursor:pointer"><span class="ico accent float3d" style="width:52px;height:52px">' + svg('img', 26) + '</span><b class="sm">ແຕະເພື່ອເລືອກຮູບສະລິບ (ໄດ້ຫຼາຍຮູບພ້ອມກັນ)</b><span class="muted xs">BCEL One, LDB Trust ຫຼື ສະລິບທະນາຄານອື່ນ · ສູງສຸດ 20 ຮູບ</span></label>') +
       (SL.items.length ? '<div class="thumbs">' + SL.items.map((it, i) => '<div class="thumb"><img src="' + it.url + '" alt="ສະລິບ ' + (i + 1) + '">' + (it.status === 'busy' ? '<div class="scan"></div>' : '') +
         (it.status === 'ok' ? '<span class="tag" style="position:absolute;left:4px;bottom:4px;background:' + (it.type === 'exp' ? 'var(--expT);color:#9C3F0E' : 'var(--greenT);color:#14532D') + '">' + (it.type === 'exp' ? 'ຈ່າຍ' : 'ຮັບ') + '</span>' : '') +
         (it.status === 'err' ? '<span class="tag" style="position:absolute;left:4px;bottom:4px;background:var(--ambT);color:#6B4100">ຜິດພາດ</span>' : '') +
@@ -675,10 +748,11 @@ function renderSlip() {
       '<section class="card flipIn" style="box-shadow:0 20px 36px -24px rgba(2,30,58,.45)"><div class="row" style="align-items:flex-start;gap:12px"><img src="' + it.url + '" alt="ຮູບສະລິບ" style="width:64px;height:88px;object-fit:cover;border-radius:10px;border:1px solid var(--line);flex-shrink:0"><div class="col" style="flex:1;min-width:0;gap:3px"><b style="font-size:15px;line-height:1.4;word-break:break-word">' + esc(d.counterparty || 'ບໍ່ພົບຊື່') + '</b><span class="muted xs">' + esc([d.date, d.time].filter(Boolean).join(' · ')) + '</span><span class="muted xs">ສະລິບ ' + (pos + 1) + ' / ' + okItems.length + '</span></div></div>' +
       '<div class="row sb" style="flex-wrap:wrap"><span style="font-size:30px;font-weight:700;letter-spacing:-.03em;color:' + (exp ? 'var(--exp)' : 'var(--green)') + '">' + (exp ? '−' : '+') + fmt(d.amount, c === 'LAK' ? 0 : 2) + ' ' + CUR[c].sym + '</span><span class="tag" style="background:' + (exp ? 'var(--expT);color:#9C3F0E' : 'var(--greenT);color:#14532D') + '">' + (d.amount_color === 'red' ? 'ສີແດງ → ' : d.amount_color === 'green' ? 'ສີຂຽວ → ' : '') + (exp ? 'ລາຍຈ່າຍ' : 'ລາຍຮັບ') + '</span></div>' +
       (c !== 'LAK' ? '<span class="muted xs">≈ ' + fmt(Math.round(d.amount * rate(c))) + ' ₭ · ອັດຕາ 1' + CUR[c].sym + ' = ' + fmt(rate(c)) + ' ₭</span>' : '') +
-      '<div class="col" style="gap:0"><div class="kv"><span>ເລກອ້າງອີງ</span><span>' + esc(d.ref || '—') + '</span></div><div class="kv"><span>ເນື້ອໃນ</span><span>' + esc(d.memo || '—') + '</span></div></div></section>' +
+      '<div class="col" style="gap:0"><div class="kv"><span>ເລກອ້າງອີງ</span><span>' + esc(d.ref || '—') + '</span></div></div>' +
+      '<label class="field" style="align-items:flex-start;padding:10px 14px;gap:8px"><span class="muted sm" style="flex-shrink:0;padding-top:3px">' + svg('pen', 16) + '</span><span class="col" style="flex:1;gap:2px"><span class="muted xs">ລາຍລະອຽດ (ແກ້ໄຂໄດ້)</span><textarea id="slip-note" rows="2" maxlength="300" placeholder="ພິມລາຍລະອຽດ…" aria-label="ລາຍລະອຽດສະລິບ" style="resize:none;line-height:1.5;padding:0">' + esc(it.note != null ? it.note : (d.memo || '')) + '</textarea></span></label></section>' +
       (it.dup ? '<div class="warn">ສະລິບນີ້ເຄີຍບັນທຶກແລ້ວ (ເລກອ້າງອີງຊ້ຳ) — ຈະຂ້າມໃຫ້.</div>' : '') +
       (conflict ? '<div class="warn">ສີຕົວເລກ ແລະ ທິດທາງການໂອນບໍ່ກົງກັນ — ກະລຸນາກວດວ່າເປັນລາຍຈ່າຍ ຫຼື ລາຍຮັບ.</div>' : '') +
-      '<div class="row" style="align-items:flex-start;gap:10px"><span class="ico" style="width:34px;height:34px;background:var(--navy);color:var(--lime)">' + svg('spark', 18) + '</span><div class="bubble" style="flex:1">' + esc(it.ruled ? 'ຈັດໝວດຕາມກົດທີ່ເຈົ້າໃຫ້ຈື່ໄວ້: ' + catName(it.cat) + '. ຖືກຕ້ອງບໍ?' : (d.reason_lo || 'ສະລິບນີ້ແມ່ນໝວດໃດ?')) + '</div></div>' +
+      '<div class="row" style="align-items:flex-start;gap:10px"><span class="ico accent" style="width:34px;height:34px">' + svg('spark', 18) + '</span><div class="bubble" style="flex:1">' + esc(it.ruled ? 'ຈັດໝວດຕາມກົດທີ່ເຈົ້າໃຫ້ຈື່ໄວ້: ' + catName(it.cat) + '. ຖືກຕ້ອງບໍ?' : (d.reason_lo || 'ສະລິບນີ້ແມ່ນໝວດໃດ?')) + '</div></div>' +
       '<div class="cats">' + ids.map((id) => { const tn = catTint(id); return '<button class="cat press' + (it.cat === id ? ' on' : '') + '" data-act="slipcat" data-v="' + id + '" aria-pressed="' + (it.cat === id) + '"><span class="ci" style="background:' + tn[0] + ';color:' + tn[1] + '">' + svg(id, 22) + '</span><span class="cl">' + esc(catName(id)) + '</span></button>'; }).join('') + '</div>' +
       '<button class="link" style="margin:0;align-self:flex-start" data-act="sliptype">ບໍ່ແມ່ນ' + (exp ? 'ລາຍຈ່າຍ' : 'ລາຍຮັບ') + '? ປ່ຽນເປັນ' + (exp ? 'ລາຍຮັບ' : 'ລາຍຈ່າຍ') + '</button>' +
       (d.counterparty ? '<label class="card" style="flex-direction:row;align-items:center;padding:12px 16px"><span class="col" style="flex:1;gap:2px"><b class="sm">ຈື່ໄວ້ສຳລັບຄັ້ງໜ້າ</b><span class="muted xs">' + esc(d.counterparty) + ' → ' + esc(catName(it.cat)) + '</span></span><input type="checkbox" data-act="sliprem"' + (it.remember ? ' checked' : '') + ' style="width:24px;height:24px;accent-color:#021e3a"></label>' : '') +
@@ -703,9 +777,10 @@ function openSettings() {
   const ov = $('#ov-set');
   ov.innerHTML = '<div class="ov-body">' +
     '<header class="row r3d" style="gap:12px"><button class="ib" data-act="closeset" aria-label="ກັບຄືນ">' + svg('left', 18, 2) + '</button><h1 class="h2" style="font-size:18px">ຕັ້ງຄ່າ</h1></header>' +
-    '<section class="hero r3d d1"><div class="shine"></div><div class="row"><span class="ico" style="width:44px;height:44px;background:var(--navy2);color:var(--lime)">' + svg('sheet', 22) + '</span><div class="col" style="gap:2px"><b>Google Sheets</b><span class="hmut xs">' + (S.demo ? 'ໂໝດທົດລອງ — ຍັງບໍ່ເຊື່ອມ' : 'ເຊື່ອມຕໍ່ແລ້ວ · ' + S.tx.length + ' ລາຍການ') + '</span></div></div>' +
+    '<section class="hero r3d d1"><div class="shine"></div><div class="row"><span class="ico accent" style="width:44px;height:44px">' + svg('sheet', 22) + '</span><div class="col" style="gap:2px"><b>Google Sheets</b><span class="hmut xs">' + (S.demo ? 'ໂໝດທົດລອງ — ຍັງບໍ່ເຊື່ອມ' : 'ເຊື່ອມຕໍ່ແລ້ວ · ' + S.tx.length + ' ລາຍການ') + '</span></div></div>' +
     (S.sheetUrl ? '<a class="act" style="text-decoration:none;height:44px" href="' + esc(S.sheetUrl) + '" target="_blank" rel="noopener">ເປີດ Google Sheet</a>' : '') +
     '<span class="hmut xs">AI (Gemini): ' + (S.aiKey ? 'ພ້ອມໃຊ້' : 'ຍັງບໍ່ໄດ້ຕັ້ງ GEMINI_API_KEY') + '</span></section>' +
+    glassCard() +
     '<section class="card r3d d2"><h2 class="h2">ອັດຕາແລກປ່ຽນ (ເປັນກີບ)</h2>' +
     ['THB', 'USD', 'CNY'].map((c) => '<label class="field"><b style="width:64px">1 ' + CUR[c].sym + ' ' + CUR[c].name + '</b><input type="number" inputmode="decimal" id="rate-' + c + '" value="' + esc(st['rate_' + c]) + '" min="0" step="any" aria-label="ອັດຕາ ' + CUR[c].name + '"><span class="muted">₭</span></label>').join('') + '</section>' +
     '<section class="card r3d d3"><h2 class="h2">ຊື່ເຈົ້າຂອງບັນຊີ</h2><span class="muted xs" style="line-height:1.6">ຊ່ວຍໃຫ້ AI ຮູ້ວ່າສະລິບແມ່ນເງິນເຂົ້າ ຫຼື ເງິນອອກ (ພິມຕາມທີ່ຂຶ້ນໃນສະລິບ).</span><label class="field"><input id="owner" value="' + esc(st.owner_name || '') + '" placeholder="ເຊັ່ນ: SOMSAK PHOMMA" aria-label="ຊື່ເຈົ້າຂອງບັນຊີ"></label></section>' +
@@ -765,6 +840,7 @@ document.addEventListener('click', (e) => {
   else if (a === 'slipsave') slipSave();
   else if (a === 'settings') openSettings();
   else if (a === 'closeset') closeOv('#ov-set');
+  else if (a === 'glass') { const g = GLASS_PRESETS[el.dataset.v]; if (g) { glassSet(g); const pct = Math.round((1 - g.a) * 100); const r = $('#gl-range'); if (r) r.value = pct; const v = $('#gl-val'); if (v) v.textContent = pct + '%'; document.querySelectorAll('[data-act="glass"]').forEach((b) => b.classList.toggle('on', b === el)); } }
   else if (a === 'saveset') saveSet();
   else if (a === 'filter') { S.filter = v; renderList(); }
   else if (a === 'tx') openTx(el.dataset.id);
@@ -779,6 +855,31 @@ $('#slip-file').addEventListener('change', (e) => { if (S.slip && e.target.files
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'ai-q') { const q = e.target.value.trim(); if (q) askAI(q); } });
 
 /* ===== Start ===== */
+
+/* ===== Liquid Glass control (per-device) ===== */
+const GLASS_PRESETS = { clear: { a: 0.2, b: 14 }, normal: { a: 0.42, b: 24 }, frost: { a: 0.68, b: 32 } };
+function glassGet() { try { const g = JSON.parse(localStorage.getItem('mt_glass') || 'null'); if (g && typeof g.a === 'number') return g; } catch (e) {} return { a: 0.42, b: 24 }; }
+function glassApply(g) { const r = document.documentElement.style; r.setProperty('--ga', String(g.a)); r.setProperty('--gblur', g.b + 'px'); }
+function glassSet(g) { glassApply(g); try { localStorage.setItem('mt_glass', JSON.stringify(g)); } catch (e) {} }
+glassApply(glassGet());
+function glassCard() {
+  const g = glassGet(); const pct = Math.round((1 - g.a) * 100);
+  const mode = Object.keys(GLASS_PRESETS).find((k) => Math.abs(GLASS_PRESETS[k].a - g.a) < 0.01) || '';
+  return '<section class="card r3d d2"><div class="row sb"><h2 class="h2">ຄວາມໂປ່ງແສງ (Liquid Glass)</h2><b id="gl-val" class="sm">' + pct + '%</b></div>' +
+    '<div class="seg" style="grid-template-columns:repeat(3,1fr)">' +
+    [['clear', 'ໃສ'], ['normal', 'ມາດຕະຖານ'], ['frost', 'ຂຸ່ນ']].map((m) => '<button class="' + (mode === m[0] ? 'on' : '') + '" data-act="glass" data-v="' + m[0] + '">' + m[1] + '</button>').join('') + '</div>' +
+    '<input type="range" class="gl-range" id="gl-range" min="10" max="85" value="' + pct + '" aria-label="ລະດັບຄວາມໂປ່ງແສງ">' +
+    '<span class="muted xs">ລາກໄປຂວາ = ໂປ່ງແສງຫຼາຍຂຶ້ນ. ບັນທຶກໄວ້ໃນເຄື່ອງນີ້ທັນທີ.</span></section>';
+}
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.id === 'slip-note' && S.slip && S.slip.items[S.slip.idx]) { S.slip.items[S.slip.idx].note = e.target.value; return; }
+  if (e.target && e.target.id === 'gl-range') {
+    const pct = Number(e.target.value); const a = Math.round((1 - pct / 100) * 100) / 100;
+    glassSet({ a, b: Math.round(12 + a * 28) });
+    const v = document.getElementById('gl-val'); if (v) v.textContent = pct + '%';
+    document.querySelectorAll('[data-act="glass"]').forEach((b) => b.classList.remove('on'));
+  }
+});
 (async function init() {
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { });
   if (API_ON && !getToken()) { showTokenScreen(''); return; }
