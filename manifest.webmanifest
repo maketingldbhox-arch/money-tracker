@@ -1,0 +1,17 @@
+{
+  "name": "ຈົດລາຍຮັບ-ລາຍຈ່າຍ",
+  "short_name": "ລາຍຮັບ-ຈ່າຍ",
+  "description": "ຈົດລາຍຮັບ-ລາຍຈ່າຍ ພ້ອມ AI ອ່ານສະລິບ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F2EE",
+  "theme_color": "#021e3a",
+  "lang": "lo",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#021e3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="ລາຍຮັບ-ຈ່າຍ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="config.js"></script>
+<title>ຈົດລາຍຮັບ-ລາຍຈ່າຍ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Noto+Sans+Lao:wght@400..700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#021e3a;--navy2:#0B2E52;--navy3:#16406B;--bg:#F3F2EE;--line:#E4E2DC;--line2:#ECEAE4;--muted:#5E636B;--muted2:#4F545B;--exp:#C2531A;--expT:#FBEADF;--inc:#2563C9;--incT:#E6EEFA;--lime:#C8F169;--amb:#8A5300;--ambT:#FCF1DC;--navyT:#E3E9F0;--green:#15803D;--greenT:#DCF3E3;--hmut:#A9BDD2}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--navy);font-family:'Bricolage Grotesque','Noto Sans Lao',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+input::placeholder,textarea::placeholder{color:#7A7F87}
+.app{max-width:480px;margin:0 auto;padding-bottom:104px}
+.view{display:none;padding:20px 18px 24px;flex-direction:column;gap:14px}
+.view.on{display:flex}
+.row{display:flex;align-items:center;gap:10px}.sb{justify-content:space-between}.col{display:flex;flex-direction:column;gap:4px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.muted{color:var(--muted)}.sm{font-size:13px}.xs{font-size:12px}.b{font-weight:700}
+.h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}.h2{margin:0;font-size:16px;font-weight:700}
+.ib{width:44px;height:44px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--navy);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.ib.ghost{background:transparent;border:none;color:var(--hmut);margin:-10px -10px -10px 0}
+.card{background:#fff;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.link{border:none;background:transparent;color:var(--inc);font-weight:600;font-size:13px;min-height:44px;padding:0;margin:-12px 0}
+.hero{position:relative;overflow:hidden;background:var(--navy);color:#F3F2EE;border-radius:24px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 26px 40px -20px rgba(2,30,58,.6);transition:transform .2s ease-out}
+.hero .big{font-size:36px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.hero .unit{font-size:20px;color:var(--hmut);font-weight:500}
+.hmut{color:var(--hmut)}
+.tile{background:var(--navy2);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:4px}
+.tile b{font-size:17px}.incL{color:#A9C7FA}.expL{color:#F5B08A}
+.act{height:52px;border-radius:16px;border:1px solid var(--line);background:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--navy)}
+.act.dark{background:var(--navy);color:#fff;border-color:var(--navy)}.act.dark svg{color:var(--lime)}
+.money{transition:filter .2s}body.hide .money{filter:blur(9px)}
+.stack{display:flex;height:12px;border-radius:99px;overflow:hidden;gap:3px}
+.lg{display:flex;align-items:center;gap:10px;font-size:14px}.dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.tx{display:flex;align-items:center;gap:12px;padding:12px 0;border:none;border-top:1px solid var(--line2);background:transparent;width:100%;text-align:left}
+.tx:first-child{border-top:none}
+.ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tx .nm{font-size:15px;font-weight:600}.tx .sub{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.amt{font-size:15px;font-weight:700;text-align:right;white-space:nowrap}
+.amt small{display:block;font-size:11px;font-weight:500;color:var(--muted)}
+.chips{display:flex;gap:6px;overflow-x:auto;margin:0 -18px;padding:2px 18px;scrollbar-width:none}
+.chip{height:44px;padding:0 14px;border-radius:99px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:6px;color:var(--navy)}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.chip .cnt{font-size:11px;font-weight:700;border-radius:99px;padding:1px 7px;background:var(--bg);color:var(--muted)}
+.chip.on .cnt{background:var(--lime);color:var(--navy)}
+.field{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:0 14px;min-height:48px}
+.field input,.field textarea{flex:1;min-width:0;border:none;outline:none;background:transparent;font-size:15px}
+.dayh{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:0 4px}
+.empty{text-align:center;padding:28px 16px;color:var(--muted);font-size:14px;line-height:1.7}
+.seg{display:grid;gap:4px;background:#E7E5DF;border-radius:16px;padding:4px}
+.seg button{height:44px;border:none;border-radius:12px;font-size:14px;font-weight:600;background:transparent;color:var(--muted2)}
+.seg button.on{background:var(--navy);color:#F3F2EE}
+nav.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;height:76px;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:start;padding:6px 8px env(safe-area-inset-bottom);z-index:20}
+nav.nav button{border:none;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;font-size:11px;color:var(--muted)}
+nav.nav button.on{color:var(--navy);font-weight:700}
+nav.nav .fab{justify-self:center;width:58px;height:58px;margin-top:-20px;border-radius:20px;background:var(--navy);color:var(--lime);box-shadow:0 8px 20px rgba(2,30,58,.3);transition:transform .3s}
+nav.nav .fab:active{transform:perspective(500px) rotateX(16deg) scale(.95)}
+.ov{position:fixed;inset:0;background:var(--bg);z-index:40;display:none;flex-direction:column}
+.ov.on{display:flex}
+.ov-body{flex:1;overflow-y:auto;width:100%;max-width:480px;margin:0 auto;padding:18px 18px 20px;display:flex;flex-direction:column;gap:12px}
+.ov-foot{width:100%;max-width:480px;margin:0 auto;background:#fff;border-radius:26px 26px 0 0;box-shadow:0 -6px 24px rgba(2,30,58,.08);padding:12px 18px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+.keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.keys button{height:46px;border:none;border-radius:14px;background:var(--bg);font-size:21px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--navy)}
+.btn{height:52px;border-radius:16px;border:none;background:var(--navy);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn svg{color:var(--lime)}.btn:disabled{opacity:.45}
+.btn.light{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.amtbig{font-size:42px;font-weight:700;letter-spacing:-.03em;line-height:1.1;text-align:center;display:block}
+.amtbig span{font-size:22px;color:var(--muted);font-weight:600}
+.curs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.curs button{height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--navy)}
+.curs button i{font-style:normal;font-size:16px;color:var(--muted)}
+.curs button.on{background:var(--navy);border-color:var(--navy);color:#fff}.curs button.on i{color:var(--lime)}
+.cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 6px}
+.cat{display:flex;flex-direction:column;align-items:center;gap:5px;padding:0;border:none;background:transparent;min-height:78px}
+.cat .ci{position:relative;width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s}
+.cat.on .ci{background:var(--navy)!important;color:var(--lime)!important;transform:translateY(-3px);box-shadow:0 10px 16px -8px rgba(2,30,58,.55)}
+.cat .cl{font-size:11px;line-height:1.35;text-align:center;max-width:84px;color:var(--muted2)}
+.cat.on .cl{color:var(--navy);font-weight:700}
+.badge{position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:var(--lime);color:var(--navy);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center}
+.sheet-bg{position:fixed;inset:0;background:rgba(2,30,58,.45);z-index:60;display:none;align-items:flex-end;justify-content:center}
+.sheet-bg.on{display:flex}
+.sheet{width:100%;max-width:480px;background:#fff;border-radius:24px 24px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;animation:sheetUp .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:12px 16px;border-radius:14px;font-size:14px;max-width:90%;opacity:0;pointer-events:none;transition:all .25s;z-index:90;line-height:1.5}
+#toast.on{opacity:1;transform:translateX(-50%)}
+#loading{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.spin{width:44px;height:44px;border-radius:12px;background:var(--navy);animation:spinY 1.2s linear infinite}
+@keyframes spinY{to{transform:perspective(300px) rotateY(360deg)}}
+.bubble{background:#fff;border:1px solid var(--line);border-radius:4px 18px 18px 18px;padding:12px 14px;font-size:14px;line-height:1.7;white-space:pre-line}
+.ubub{align-self:flex-end;background:var(--navy);color:#fff;border-radius:18px 18px 4px 18px;padding:10px 14px;font-size:14px;line-height:1.6;max-width:85%}
+.tag{font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px;display:inline-block}
+.thumbs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.thumb{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#fff;border:1px solid var(--line)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .rm{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;border:none;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;padding:0}
+.scan{position:absolute;left:4px;right:4px;height:2px;border-radius:2px;background:var(--lime);box-shadow:0 0 10px 2px rgba(200,241,105,.75);animation:scan 2.2s ease-in-out infinite}
+@keyframes scan{0%,100%{top:8%}50%{top:88%}}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line2);font-size:13px}.kv span:first-child{color:var(--muted);flex-shrink:0}.kv span:last-child{font-weight:600;text-align:right;word-break:break-word}
+.warn{background:var(--ambT);color:#6B4100;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.6}
+.pg{display:grid;gap:6px}.pg div{height:6px;border-radius:99px;background:#DDDAD3}.pg div.on{background:var(--navy)}
+@keyframes rise3d{from{opacity:0;transform:perspective(900px) rotateX(-22deg) translate3d(0,28px,-60px)}to{opacity:1;transform:none}}
+@keyframes float3d{0%,100%{transform:perspective(1000px) rotateX(6deg) rotateY(-8deg)}50%{transform:perspective(1000px) rotateX(-4deg) rotateY(8deg) translateZ(14px)}}
+@keyframes shine3d{0%{transform:translateX(-150%) skewX(-20deg)}55%,100%{transform:translateX(420%) skewX(-20deg)}}
+@keyframes tile3d{from{opacity:0;transform:perspective(600px) rotateY(-60deg) scale(.85)}to{opacity:1;transform:none}}
+@keyframes flip3d{from{opacity:0;transform:perspective(1000px) rotateY(-70deg) translateZ(-40px)}to{opacity:1;transform:none}}
+@keyframes bump3d{from{opacity:.3;transform:perspective(400px) rotateX(-60deg)}to{opacity:1;transform:none}}
+@keyframes donut3d{from{opacity:0;transform:perspective(800px) rotateX(70deg) rotate(-120deg) scale(.7)}to{opacity:1;transform:none}}
+@keyframes bar3d{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.r3d{animation:rise3d .7s cubic-bezier(.2,.8,.2,1) both;transform-origin:50% 0}
+.float3d{animation:float3d 8s ease-in-out infinite;transform-style:preserve-3d}
+.shine{position:absolute;top:0;bottom:0;left:0;width:30%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.14),rgba(255,255,255,0));animation:shine3d 5s ease-in-out infinite;pointer-events:none}
+.tileIn{animation:tile3d .45s cubic-bezier(.2,.8,.2,1) both}
+.flipIn{animation:flip3d .55s cubic-bezier(.2,.8,.2,1) both;transform-origin:0 50%}
+.bump{animation:bump3d .3s ease-out both}
+.donut{animation:donut3d 1s cubic-bezier(.2,.8,.2,1) .15s both}
+.bar{transform-origin:50% 100%;animation:bar3d .8s cubic-bezier(.2,.8,.2,1) .25s both}
+.press{transition:transform .15s}.press:active{transform:perspective(500px) rotateX(12deg) translateY(2px) scale(.96)}
+.d1{animation-delay:.05s}.d2{animation-delay:.1s}.d3{animation-delay:.15s}.d4{animation-delay:.2s}.d5{animation-delay:.25s}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="loading"><div class="spin"></div><div class="muted sm">ກຳລັງໂຫຼດຂໍ້ມູນ…</div></div>
+<div class="app">
+  <section id="v-home" class="view on"></section>
+  <section id="v-list" class="view"></section>
+  <section id="v-report" class="view"></section>
+  <section id="v-ai" class="view"></section>
+</div>
+<nav class="nav" aria-label="ເມນູຫຼັກ" id="nav"></nav>
+<div id="ov-add" class="ov" role="dialog" aria-label="ເພີ່ມລາຍການ"></div>
+<div id="ov-slip" class="ov" role="dialog" aria-label="ນຳເຂົ້າສະລິບ"></div>
+<div id="ov-set" class="ov" role="dialog" aria-label="ຕັ້ງຄ່າ"></div>
+<div id="sheet-bg" class="sheet-bg"><div class="sheet" id="sheet"></div></div>
+<input type="file" id="slip-file" accept="image/*" multiple hidden>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ===== Helpers ===== */
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const errMsg = (e) => (e && e.message) || String(e);
+const MONTHS = ['ມັງກອນ', 'ກຸມພາ', 'ມີນາ', 'ເມສາ', 'ພຶດສະພາ', 'ມິຖຸນາ', 'ກໍລະກົດ', 'ສິງຫາ', 'ກັນຍາ', 'ຕຸລາ', 'ພະຈິກ', 'ທັນວາ'];
+const MS = ['ມ.ກ', 'ກ.ພ', 'ມ.ນ', 'ມ.ສ', 'ພ.ພ', 'ມິ.ຖ', 'ກ.ລ', 'ສ.ຫ', 'ກ.ຍ', 'ຕ.ລ', 'ພ.ຈ', 'ທ.ວ'];
+const WD = ['ວັນອາທິດ', 'ວັນຈັນ', 'ວັນອັງຄານ', 'ວັນພຸດ', 'ວັນພະຫັດ', 'ວັນສຸກ', 'ວັນເສົາ'];
+const pad2 = (n) => String(n).padStart(2, '0');
+const ymOf = (d) => d.getFullYear() + '-' + pad2(d.getMonth() + 1);
+const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+const nowTime = () => { const d = new Date(); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
+const shiftMonth = (ym, n) => { const [y, m] = ym.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); return ymOf(d); };
+const monthLabel = (ym) => { const [y, m] = ym.split('-').map(Number); return MONTHS[m - 1] + ' ' + y; };
+const fmt = (n, dec) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 });
+const short = (n) => { const a = Math.abs(n); return (n < 0 ? '−' : '') + (a >= 1e6 ? (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : a >= 1e3 ? Math.round(a / 1e3) + 'K' : fmt(a)); };
+const ring = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+
+/* ===== Icons ===== */
+const IC = {
+  home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+  list: 'M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01',
+  plus: 'M12 5v14M5 12h14',
+  chart: 'M21 12A9 9 0 1 1 12 3v9zM15 3.5A9 9 0 0 1 20.5 9H15z',
+  spark: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z',
+  gear: 'M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1' + ring(15, 6, 2) + ring(9, 12, 2) + ring(17, 18, 2),
+  eye: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z' + ring(12, 12, 3),
+  left: 'm15 6-6 6 6 6', right: 'm9 6 6 6-6 6',
+  cam: 'M4 8h3l2-3h6l2 3h3v12H4z' + ring(12, 13, 3.5),
+  x: 'M6 6l12 12M18 6 6 18', bksp: 'M9 5h11v14H9l-6-7zM13 9.5l5 5M18 9.5l-5 5',
+  check: 'm5 12 5 5 9-10', trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+  search: ring(11, 11, 7) + 'M20 20l-3.5-3.5', img: 'M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5' + ring(15.5, 8.5, 1.5),
+  send: 'M4 12 20 4l-6 16-3-7z', sheet: 'M4 4h16v16H4zM4 9h16M4 14h16M10 4v16',
+  coffee: 'M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 3v3M12 3v3',
+  breakfast: 'M3 18h18M7 18a5 5 0 0 1 10 0M12 5v4M5 10.5l1.5 1.5M19 10.5 17.5 12M6 21h12',
+  lunch: 'M3 11h18a9 9 0 0 1-18 0zM8 7c0-2 2-2 2-4M13 7c0-2 2-2 2-4',
+  dinner: 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z',
+  snack: 'M7 8h10l-1.5 13h-7zM6 8h12M12 8l2-5h3',
+  market: 'M3 10h18l-2 10H5zM8 10l3-6M16 10l-3-6M9 14v3M15 14v3',
+  fuel: 'M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M4 10h10M14 8h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0V8l-3-3',
+  border: 'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM9 17h6' + ring(12, 10, 3),
+  shipping: 'M3 7.5 12 3l9 4.5v9L12 21l-9-4.5zM3 7.5l9 4.5 9-4.5M12 12v9M7.5 5.2l9 4.6',
+  hair: ring(6, 6, 3) + ring(6, 18, 3) + 'M8.1 8.1 20 20M8.1 15.9 20 4',
+  cosmetic: 'M9 21h6V11H9zM10 11V7l4-3v7M8 21h8',
+  health: 'M20.8 8.6a5 5 0 0 0-8.8-3.2 5 5 0 0 0-8.8 3.2C3.2 14 12 20 12 20s8.8-6 8.8-11.4zM7 12h2.5l1.5-2.5 2 5 1.5-2.5H17',
+  topup: 'M7 2h10a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM11 18h2M12 7v6M9.5 9.5 12 7l2.5 2.5',
+  online: 'M3 4h2l2.4 11h10.2L20 7H6.2' + ring(9, 19.5, 1.5) + ring(17, 19.5, 1.5),
+  general: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6',
+  other: ring(6, 12, 1.5) + ring(12, 12, 1.5) + ring(18, 12, 1.5),
+  salary: 'M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-4v4M16 13.5h2',
+  side: 'M4 8h16v11H4zM9 8V5h6v3M4 13h16',
+  bonus: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z',
+  interest: 'M19 5 5 19' + ring(7, 7, 2.5) + ring(17, 17, 2.5),
+  gift: 'M4 11h16v10H4zM3 7h18v4H3zM12 7v14M12 7c-1-3-5-3-5 0M12 7c1-3 5-3 5 0',
+  pass: 'M4 8h13l-3-3M20 16H7l3 3'
+};
+IC.other_inc = IC.other;
+const svg = (n, s, w) => '<svg aria-hidden="true" width="' + (s || 22) + '" height="' + (s || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (w || 1.8) + '" stroke-linecap="round" stroke-linejoin="round"><path d="' + IC[n] + '"/></svg>';
+
+/* ===== Categories & currencies ===== */
+const CATS = {
+  coffee: ['ກາເຟ', 'food'], breakfast: ['ອາຫານເຊົ້າ', 'food'], lunch: ['ອາຫານສວາຍ', 'food'], dinner: ['ອາຫານຄ່ຳ', 'food'],
+  snack: ['ເຂົ້າໜົມ - ເຄື່ອງດື່ມ', 'food'], market: ['ອອກຕະຫຼາດ', 'food'],
+  fuel: ['ນ້ຳມັນລົດ', 'travel'], border: ['ຄ່າຜ່ານແດນ ຕມ', 'travel'], shipping: ['ຄ່າຂົນສົ່ງ - ພັດສະດຸ', 'travel'],
+  hair: ['ຕັດຜົມ', 'self'], cosmetic: ['ເຄື່ອງສຳອາງ', 'self'], health: ['ສຸຂະພາບ', 'self'],
+  online: ['Shopping Online', 'shop'], topup: ['ຕື່ມເງິນໂທລະສັບ', 'shop'], general: ['ໃຊ້ຈ່າຍທົ່ວໄປ', 'shop'], other: ['ອື່ນໆ', 'shop'],
+  salary: ['ເງິນເດືອນ', 'inc'], side: ['ລາຍຮັບເສີມ', 'inc'], bonus: ['ໂບນັດ', 'inc'], interest: ['ດອກເບ້ຍ', 'inc'],
+  gift: ['ຂອງຂວັນ', 'inc'], pass: ['ເງິນຜ່ານມື', 'inc'], other_inc: ['ລາຍຮັບອື່ນໆ', 'inc']
+};
+const GROUPS = [
+  { id: 'food', label: 'ອາຫານ & ເຄື່ອງດື່ມ', items: ['coffee', 'breakfast', 'lunch', 'dinner', 'snack', 'market'] },
+  { id: 'travel', label: 'ເດີນທາງ & ຂົນສົ່ງ', items: ['fuel', 'border', 'shipping'] },
+  { id: 'self', label: 'ສ່ວນຕົວ & ສຸຂະພາບ', items: ['hair', 'cosmetic', 'health'] },
+  { id: 'shop', label: 'ຊື້ເຄື່ອງ & ອື່ນໆ', items: ['online', 'topup', 'general', 'other'] }
+];
+const EXP_IDS = GROUPS.reduce((a, g) => a.concat(g.items), []);
+const INC_IDS = ['salary', 'side', 'bonus', 'interest', 'gift', 'pass', 'other_inc'];
+const DEFAULT_FAV = ['coffee', 'breakfast', 'lunch', 'fuel', 'market', 'snack', 'topup', 'online'];
+const TINT = { food: ['#FBEADF', '#C2531A'], travel: ['#E6EEFA', '#2563C9'], self: ['#FCF1DC', '#8A5300'], shop: ['#E3E9F0', '#021e3a'], inc: ['#E6EEFA', '#2563C9'] };
+const PALETTE = ['#C2531A', '#E9A23B', '#2563C9', '#021e3a', '#7C8DA6', '#C9C5BC'];
+const CUR = { LAK: { sym: '₭', name: 'ກີບ', dec: 0 }, THB: { sym: '฿', name: 'ບາດ', dec: 2 }, USD: { sym: '$', name: 'ໂດລາ', dec: 2 }, CNY: { sym: '¥', name: 'ຢວນ', dec: 2 } };
+const catName = (id) => (CATS[id] ? CATS[id][0] : id);
+const catTint = (id) => TINT[CATS[id] ? CATS[id][1] : 'shop'];
+
+/* ===== State ===== */
+const S = {
+  tx: [], settings: { rate_THB: 650, rate_USD: 21800, rate_CNY: 3000, owner_name: '' }, rules: [], aiKey: false, demo: false, sheetUrl: '',
+  view: 'home', month: ymOf(new Date()), filter: 'all', q: '', add: null, slip: null, ai: [], aiBusy: false, flip: false
+};
+const rate = (c) => (c === 'LAK' ? 1 : (Number(S.settings['rate_' + c]) || 1));
+
+/* ===== API (Apps Script, or local demo when opened outside Apps Script) ===== */
+const API_URL = String(window.MT_API_URL || '');
+const API_ON = API_URL.indexOf('https://') === 0;
+const getToken = () => { try { return localStorage.getItem('mt_token') || ''; } catch (e) { return ''; } };
+const setToken = (t) => { try { localStorage.setItem('mt_token', t); } catch (e) { } };
+(function () {
+  const m = location.hash.match(/t=([^&]+)/);
+  if (m) { setToken(decodeURIComponent(m[1])); history.replaceState(null, '', location.pathname + location.search); }
+})();
+function api(fn) {
+  const args = Array.prototype.slice.call(arguments, 1);
+  if (API_ON) {
+    return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ token: getToken(), fn: fn, args: args }) })
+      .then((r) => r.json())
+      .then((j) => { if (!j.ok) { const err = new Error(j.error || 'API error'); err.auth = /ລະຫັດເຂົ້າໃຊ້/.test(j.error || ''); throw err; } return j.data; });
+  }
+  return Promise.resolve().then(() => Local[fn].apply(Local, args));
+}
+function showTokenScreen(msg) {
+  const L = $('#loading');
+  L.style.display = 'flex';
+  L.innerHTML = '<div class="card" style="width:min(360px,90vw);gap:14px"><span class="ico" style="width:52px;height:52px;background:var(--navy);color:var(--lime)">' + svg('spark', 26) + '</span><h1 class="h2" style="font-size:18px">ຈົດລາຍຮັບ-ລາຍຈ່າຍ</h1><span class="muted sm" style="line-height:1.6">ໃສ່ລະຫັດເຂົ້າໃຊ້ ເພື່ອເຊື່ອມກັບ Google Sheets ຂອງເຈົ້າ (ໃສ່ຄັ້ງດຽວ).</span>' +
+    (msg ? '<div class="warn">' + esc(msg) + '</div>' : '') +
+    '<label class="field"><input id="tok" type="password" autocomplete="off" placeholder="ລະຫັດເຂົ້າໃຊ້" aria-label="ລະຫັດເຂົ້າໃຊ້"></label><button class="btn" id="tok-save">' + svg('check', 18, 2.4) + 'ເຂົ້າໃຊ້</button></div>';
+  $('#tok-save').addEventListener('click', () => { const t = $('#tok').value.trim(); if (t) { setToken(t); location.reload(); } });
+}
+const Local = {
+  _get() { let d = null; try { d = JSON.parse(localStorage.getItem('mt_demo') || 'null'); } catch (e) { } return d || { tx: [], settings: { rate_THB: 650, rate_USD: 21800, rate_CNY: 3000, owner_name: '' }, rules: [] }; },
+  _put(d) { try { localStorage.setItem('mt_demo', JSON.stringify(d)); } catch (e) { } },
+  _clean(t, d) {
+    const r = t.currency === 'LAK' ? 1 : Number(d.settings['rate_' + t.currency]) || 1;
+    return Object.assign({}, t, { id: 'L' + Date.now() + Math.random().toString(36).slice(2, 7), amount: String(t.amount), rate: String(r), amount_lak: String(Math.round(Number(t.amount) * r)), created_at: new Date().toISOString() });
+  },
+  getInit() { const d = this._get(); return Object.assign({}, d, { aiKey: false, demo: true, sheetUrl: '' }); },
+  addTx(t) { const d = this._get(); const o = this._clean(t, d); d.tx.push(o); this._put(d); return o; },
+  addTxBatch(list) {
+    const d = this._get(); const refs = {}; d.tx.forEach((x) => { if (x.ref) refs[x.ref] = 1; });
+    const saved = []; let skipped = 0;
+    list.forEach((t) => { if (t.ref && refs[t.ref]) { skipped++; return; } const o = this._clean(t, d); if (o.ref) refs[o.ref] = 1; saved.push(o); d.tx.push(o); });
+    this._put(d); return { saved, skipped };
+  },
+  deleteTx(id) { const d = this._get(); d.tx = d.tx.filter((x) => x.id !== id); this._put(d); return true; },
+  saveSettings(s) { const d = this._get(); Object.assign(d.settings, s); this._put(d); return d.settings; },
+  saveRule(r) { const d = this._get(); const k = String(r.match).toUpperCase(); d.rules = d.rules.filter((x) => x.match !== k); d.rules.push({ match: k, type: r.type, category: r.category }); this._put(d); return d.rules; },
+  readSlip() { throw new Error('ການອ່ານສະລິບດ້ວຍ AI ໃຊ້ໄດ້ເມື່ອເປີດຜ່ານ Apps Script ແລະ ຕັ້ງ GEMINI_API_KEY ແລ້ວ'); },
+  aiReport() { throw new Error('ຜູ້ຊ່ວຍ AI ໃຊ້ໄດ້ເມື່ອເປີດຜ່ານ Apps Script ແລະ ຕັ້ງ GEMINI_API_KEY ແລ້ວ'); }
+};
+
+/* ===== Calculations ===== */
+const monthTx = (m) => S.tx.filter((t) => String(t.date).slice(0, 7) === m);
+function totals(list) {
+  let inc = 0, exp = 0, pass = 0;
+  list.forEach((t) => { const v = Number(t.amount_lak) || 0; if (t.type === 'exp') exp += v; else if (t.category === 'pass') pass += v; else inc += v; });
+  return { inc, exp, pass, net: inc - exp };
+}
+function byCat(list) {
+  const m = {};
+  list.filter((t) => t.type === 'exp').forEach((t) => { m[t.category] = m[t.category] || { id: t.category, name: catName(t.category), v: 0, n: 0 }; m[t.category].v += Number(t.amount_lak) || 0; m[t.category].n++; });
+  return Object.values(m).sort((a, b) => b.v - a.v);
+}
+function byCur(list) {
+  const m = {};
+  list.forEach((t) => { const c = t.currency || 'LAK'; m[c] = m[c] || { cur: c, exp: 0, inc: 0 }; m[c][t.type === 'exp' ? 'exp' : 'inc'] += Number(t.amount) || 0; });
+  return Object.values(m);
+}
+const sortDesc = (a, b) => (b.date + b.time + b.created_at).localeCompare(a.date + a.time + a.created_at);
+function favList() {
+  const cnt = {};
+  S.tx.filter((t) => t.type === 'exp').forEach((t) => { cnt[t.category] = (cnt[t.category] || 0) + 1; });
+  const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]).filter((id) => EXP_IDS.indexOf(id) >= 0);
+  const out = top.slice(0, 8);
+  DEFAULT_FAV.forEach((id) => { if (out.length < 8 && out.indexOf(id) < 0) out.push(id); });
+  return out;
+}
+function timeSuggest() {
+  const h = new Date().getHours() + new Date().getMinutes() / 60;
+  if (h >= 5 && h < 10) return ['coffee', 'breakfast'];
+  if (h >= 10.5 && h < 14) return ['lunch', 'coffee'];
+  if (h >= 17 && h < 21.5) return ['dinner', 'snack'];
+  return ['snack', 'general'];
+}
+
+/* ===== UI pieces ===== */
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('on'), 3200); }
+function monthBar(cls) {
+  return '<div class="row sb ' + (cls || '') + '"><button class="ib" data-act="mprev" aria-label="ເດືອນກ່ອນ">' + svg('left', 18, 2) + '</button><b class="h2">' + monthLabel(S.month) + '</b><button class="ib" data-act="mnext" aria-label="ເດືອນຖັດໄປ">' + svg('right', 18, 2) + '</button></div>';
+}
+function amtHtml(t) {
+  const exp = t.type === 'exp';
+  const pass = t.category === 'pass';
+  const color = exp ? 'var(--exp)' : pass ? 'var(--muted)' : 'var(--inc)';
+  const sign = exp ? '−' : pass ? '' : '+';
+  const c = t.currency || 'LAK';
+  const main = c === 'LAK' ? fmt(t.amount) : fmt(t.amount, 2) + ' ' + CUR[c].sym;
+  const sub = c === 'LAK' ? '' : '<small>≈ ' + fmt(t.amount_lak) + ' ₭</small>';
+  return '<span class="amt money" style="color:' + color + '">' + sign + main + sub + '</span>';
+}
+function txRow(t) {
+  const tn = catTint(t.category);
+  const parts = [t.note || t.counterparty || (CATS[t.category] && CATS[t.category][1] === 'inc' ? 'ລາຍຮັບ' : ''), t.time, t.source === 'slip' ? 'ສະລິບ' : ''].filter(Boolean);
+  return '<button class="tx" data-act="tx" data-id="' + esc(t.id) + '"><span class="ico" style="background:' + tn[0] + ';color:' + tn[1] + '">' + svg(IC[t.category] ? t.category : 'other', 20) + '</span>' +
+    '<span class="col" style="flex:1;min-width:0;gap:2px"><span class="nm">' + esc(catName(t.category)) + '</span><span class="sub">' + esc(parts.join(' · ')) + '</span></span>' + amtHtml(t) + '</button>';
+}
+function emptyCard(text) { return '<div class="card empty">' + text + '</div>'; }
+
+/* ===== Views ===== */
+function renderHome() {
+  const list = monthTx(S.month), T = totals(list), cats = byCat(list);
+  const recent = S.tx.slice().sort(sortDesc).slice(0, 5);
+  const h = new Date().getHours();
+  const greet = h < 11 ? 'ສະບາຍດີຕອນເຊົ້າ' : h < 17 ? 'ສະບາຍດີຕອນສວາຍ' : 'ສະບາຍດີຕອນແລງ';
+  let catHtml = '';
+  if (cats.length) {
+    const top = cats.slice(0, 5), rest = cats.slice(5).reduce((a, c) => a + c.v, 0);
+    const segs = top.map((c, i) => ({ name: c.name, v: c.v, col: PALETTE[i] })).concat(rest ? [{ name: 'ອື່ນໆ', v: rest, col: PALETTE[5] }] : []);
+    catHtml = '<section class="card r3d d4"><div class="row sb"><h2 class="h2">ໃຊ້ຈ່າຍຕາມໝວດ</h2><button class="link" data-act="go" data-v="report">ເບິ່ງກາຟ</button></div>' +
+      '<div class="stack" role="img" aria-label="ສັດສ່ວນລາຍຈ່າຍຕາມໝວດ">' + segs.map((s) => '<div style="flex:' + s.v + ';background:' + s.col + '"></div>').join('') + '</div>' +
+      segs.slice(0, 4).map((s) => '<div class="lg"><span class="dot" style="background:' + s.col + '"></span><span style="flex:1">' + esc(s.name) + '</span><span class="muted xs">' + Math.round(s.v / T.exp * 100) + '%</span><b class="money" style="min-width:96px;text-align:right">' + fmt(s.v) + '</b></div>').join('') + '</section>';
+  }
+  $('#v-home').innerHTML =
+    '<header class="row sb r3d"><div class="col" style="gap:0"><span class="muted sm">' + greet + '</span><h1 class="h1">ລາຍຮັບ-ລາຍຈ່າຍ</h1></div><button class="ib" data-act="settings" aria-label="ຕັ້ງຄ່າ">' + svg('gear', 20) + '</button></header>' +
+    (S.demo ? '<div class="warn r3d">ໂໝດທົດລອງ: ຂໍ້ມູນເກັບໃນເຄື່ອງນີ້ເທົ່ານັ້ນ. ເປີດຜ່ານລິ້ງ Apps Script ເພື່ອບັນທຶກລົງ Google Sheets.</div>' : '') +
+    monthBar('r3d d1') +
+    '<div class="r3d d2"><div class="float3d"><section class="hero" id="hero"><div class="shine"></div>' +
+    '<div class="row sb"><span class="hmut sm">ຄົງເຫຼືອເດືອນນີ້</span><button class="ib ghost" data-act="hide" aria-label="ເຊື່ອງ ຫຼື ສະແດງຍອດເງິນ">' + svg('eye', 20) + '</button></div>' +
+    '<div class="big money">' + (T.net < 0 ? '−' : '') + fmt(Math.abs(T.net)) + ' <span class="unit">₭</span></div>' +
+    '<div class="g2"><div class="tile"><span class="hmut xs">ລາຍຮັບ</span><b class="incL money">+' + fmt(T.inc) + '</b></div><div class="tile"><span class="hmut xs">ລາຍຈ່າຍ</span><b class="expL money">−' + fmt(T.exp) + '</b></div></div>' +
+    (T.pass ? '<span class="hmut xs">ເງິນຜ່ານມື (ບໍ່ນັບເປັນລາຍຮັບ): <span class="money">' + fmt(T.pass) + '</span> ₭</span>' : '') +
+    '</section></div></div>' +
+    '<div class="g2 r3d d3"><button class="act press" data-act="add">' + svg('plus', 20, 2.2) + 'ເພີ່ມລາຍການ</button><button class="act dark press" data-act="slip">' + svg('cam', 20) + 'ສະແກນສະລິບ</button></div>' +
+    catHtml +
+    '<section class="card r3d d5" style="gap:0"><div class="row sb" style="padding-bottom:6px"><h2 class="h2">ລາຍການລ່າສຸດ</h2>' + (recent.length ? '<button class="link" data-act="go" data-v="list">ທັງໝົດ</button>' : '') + '</div>' +
+    (recent.length ? recent.map(txRow).join('') : '<div class="empty">ຍັງບໍ່ມີລາຍການ.<br>ກົດ "ເພີ່ມລາຍການ" ຫຼື "ສະແກນສະລິບ" ເພື່ອເລີ່ມ.</div>') + '</section>';
+  const hero = $('#hero');
+  if (hero) {
+    hero.addEventListener('pointermove', (e) => { const r = hero.getBoundingClientRect(); const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5; hero.style.transform = 'perspective(900px) rotateX(' + (py * -14).toFixed(1) + 'deg) rotateY(' + (px * 18).toFixed(1) + 'deg)'; });
+    hero.addEventListener('pointerleave', () => { hero.style.transform = ''; });
+  }
+}
+
+function renderList() {
+  $('#v-list').innerHTML =
+    '<header class="row sb r3d"><h1 class="h1">ປະຫວັດລາຍການ</h1></header>' + monthBar('r3d d1') +
+    '<label class="field r3d d2">' + svg('search', 18) + '<input id="q" type="search" placeholder="ຄົ້ນຫາ: ໝວດ, ບັນທຶກ, ຈຳນວນ" value="' + esc(S.q) + '" aria-label="ຄົ້ນຫາ"></label>' +
+    '<div class="chips r3d d2">' + [['all', 'ທັງໝົດ'], ['exp', 'ລາຍຈ່າຍ'], ['inc', 'ລາຍຮັບ'], ['LAK', '₭ ກີບ'], ['THB', '฿ ບາດ'], ['USD', '$ ໂດລາ'], ['CNY', '¥ ຢວນ']].map((f) => '<button class="chip' + (S.filter === f[0] ? ' on' : '') + '" data-act="filter" data-v="' + f[0] + '">' + f[1] + '</button>').join('') + '</div>' +
+    '<div id="list-body" class="col" style="gap:14px"></div>';
+  renderListBody();
+  $('#q').addEventListener('input', (e) => { S.q = e.target.value; renderListBody(); });
+}
+function renderListBody() {
+  const q = S.q.trim().toLowerCase();
+  const list = monthTx(S.month).filter((t) => {
+    if (S.filter === 'exp' || S.filter === 'inc') { if (t.type !== S.filter) return false; }
+    else if (S.filter !== 'all' && (t.currency || 'LAK') !== S.filter) return false;
+    if (!q) return true;
+    return [catName(t.category), t.note, t.counterparty, t.amount, t.ref].join(' ').toLowerCase().indexOf(q) >= 0;
+  }).sort(sortDesc);
+  const T = totals(list);
+  let html = '<div class="card g3" style="display:grid;padding:14px 16px"><div class="col" style="gap:2px"><span class="muted xs">ລາຍຮັບ</span><b class="money" style="color:var(--inc)">+' + short(T.inc) + '</b></div><div class="col" style="gap:2px"><span class="muted xs">ລາຍຈ່າຍ</span><b class="money" style="color:var(--exp)">−' + short(T.exp) + '</b></div><div class="col" style="gap:2px"><span class="muted xs">ຄົງເຫຼືອ</span><b class="money">' + short(T.net) + '</b></div></div>';
+  if (!list.length) html += emptyCard('ບໍ່ມີລາຍການໃນເດືອນນີ້');
+  const days = {};
+  list.forEach((t) => { (days[t.date] = days[t.date] || []).push(t); });
+  Object.keys(days).sort().reverse().forEach((d) => {
+    const dt = new Date(d + 'T00:00:00');
+    const tt = totals(days[d]);
+    const label = (d === todayStr() ? 'ມື້ນີ້ · ' : '') + WD[dt.getDay()] + ' ' + dt.getDate() + ' ' + MS[dt.getMonth()];
+    html += '<section class="col" style="gap:8px"><div class="dayh"><b style="color:var(--navy)">' + label + '</b><span class="money">' + (tt.net >= 0 ? '+' : '−') + fmt(Math.abs(tt.net)) + '</span></div><div class="card" style="padding:0 16px;gap:0">' + days[d].map(txRow).join('') + '</div></section>';
+  });
+  $('#list-body').innerHTML = html;
+}
+
+function renderReport() {
+  const list = monthTx(S.month), T = totals(list), cats = byCat(list);
+  const top = cats.slice(0, 5), rest = cats.slice(5).reduce((a, c) => a + c.v, 0);
+  const segs = top.map((c, i) => ({ name: c.name, v: c.v, n: c.n, col: PALETTE[i] })).concat(rest ? [{ name: 'ອື່ນໆ', v: rest, n: 0, col: PALETTE[5] }] : []);
+  const C = 2 * Math.PI * 60;
+  let off = 0;
+  const circles = segs.map((s) => { const len = s.v / (T.exp || 1) * C; const c = '<circle cx="80" cy="80" r="60" stroke="' + s.col + '" stroke-dasharray="' + Math.max(len - 2, 0.5).toFixed(2) + ' ' + C.toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '"/>'; off += len; return c; }).join('');
+  const months = [];
+  for (let i = 5; i >= 0; i--) { const m = shiftMonth(S.month, -i); const t = totals(monthTx(m)); months.push({ m, inc: t.inc, exp: t.exp }); }
+  const max = Math.max(1, ...months.map((x) => Math.max(x.inc, x.exp)));
+  const curs = byCur(list);
+  $('#v-report').innerHTML =
+    '<header class="row sb r3d"><h1 class="h1">ລາຍງານ</h1></header>' + monthBar('r3d d1') +
+    '<div class="g3 r3d d2">' + [['ລາຍຮັບ', T.inc, 'var(--inc)'], ['ລາຍຈ່າຍ', T.exp, 'var(--exp)'], ['ຄົງເຫຼືອ', T.net, 'var(--navy)']].map((x) => '<div class="card" style="padding:12px;gap:2px"><span class="muted xs">' + x[0] + '</span><b class="money" style="font-size:17px;color:' + x[2] + '">' + short(x[1]) + '</b></div>').join('') + '</div>' +
+    '<section class="card r3d d3"><h2 class="h2">ລາຍຈ່າຍຕາມໝວດ</h2>' +
+    (segs.length ? '<div class="float3d" style="position:relative;width:170px;height:170px;align-self:center"><svg class="donut" role="img" aria-label="ກາຟວົງມົນລາຍຈ່າຍຕາມໝວດ" width="170" height="170" viewBox="0 0 160 160"><g transform="rotate(-90 80 80)" fill="none" stroke-width="22">' + circles + '</g></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b class="money" style="font-size:22px">' + short(T.exp) + '</b><span class="muted xs">ກີບ · ລາຍຈ່າຍ</span></div></div>' +
+      segs.map((s) => '<div class="lg" style="padding:6px 0;border-top:1px solid var(--line2)"><span class="dot" style="background:' + s.col + '"></span><span style="flex:1">' + esc(s.name) + ' <span class="muted xs">' + Math.round(s.v / T.exp * 100) + '%</span></span><b class="money">' + fmt(s.v) + '</b></div>').join('') : '<div class="empty">ຍັງບໍ່ມີລາຍຈ່າຍໃນເດືອນນີ້</div>') + '</section>' +
+    '<section class="card r3d d4"><h2 class="h2">ລາຍຮັບ vs ລາຍຈ່າຍ · 6 ເດືອນ</h2><div class="row xs muted" style="gap:14px"><span class="row" style="gap:6px"><span class="dot" style="background:var(--inc)"></span>ລາຍຮັບ</span><span class="row" style="gap:6px"><span class="dot" style="background:var(--exp)"></span>ລາຍຈ່າຍ</span></div>' +
+    '<div role="img" aria-label="ກາຟແທ່ງ 6 ເດືອນ" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:end;height:150px;border-bottom:1px solid #D9D6CF">' + months.map((x) => '<div style="display:flex;justify-content:center;align-items:flex-end;gap:3px;height:100%"><div class="bar" style="width:13px;height:' + Math.round(x.inc / max * 140) + 'px;background:var(--inc);border-radius:4px 4px 0 0"></div><div class="bar" style="width:13px;height:' + Math.round(x.exp / max * 140) + 'px;background:var(--exp);border-radius:4px 4px 0 0"></div></div>').join('') + '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));font-size:11px;text-align:center" class="muted">' + months.map((x) => '<span' + (x.m === S.month ? ' style="color:var(--navy);font-weight:700"' : '') + '>' + MS[Number(x.m.slice(5)) - 1] + '</span>').join('') + '</div></section>' +
+    (curs.length ? '<section class="card r3d d5"><h2 class="h2">ແຍກຕາມສະກຸນເງິນ</h2>' + curs.map((c) => '<div class="lg" style="padding:6px 0;border-top:1px solid var(--line2)"><b style="width:28px;font-size:18px">' + CUR[c.cur].sym + '</b><span style="flex:1">' + CUR[c.cur].name + '</span><span class="col money" style="align-items:flex-end;gap:0"><span style="color:var(--exp);font-weight:700">−' + fmt(c.exp, c.cur === 'LAK' ? 0 : 2) + '</span>' + (c.inc ? '<span style="color:var(--inc);font-size:12px">+' + fmt(c.inc, c.cur === 'LAK' ? 0 : 2) + '</span>' : '') + '</span></div>').join('') + '</section>' : '');
+}
+
+function aiSummary() {
+  const m = S.month, pm = shiftMonth(m, -1);
+  const L = monthTx(m), P = monthTx(pm);
+  const [y, mo] = m.split('-').map(Number);
+  const dim = new Date(y, mo, 0).getDate();
+  const elapsed = m === ymOf(new Date()) ? new Date().getDate() : dim;
+  const pack = (list) => ({ totals: totals(list), byCategory: byCat(list).map((c) => ({ name: c.name, lak: c.v, count: c.n })) });
+  return Object.assign({ month: monthLabel(m), days_elapsed: elapsed, days_in_month: dim, transactions: L.length, byCurrency: byCur(L) }, pack(L), { prevMonth: Object.assign({ month: monthLabel(pm) }, pack(P)) });
+}
+function mdLite(t) { return esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
+function renderAI() {
+  const ready = S.aiKey && !S.demo;
+  $('#v-ai').innerHTML =
+    '<header class="row r3d" style="gap:12px"><span class="ico" style="width:44px;height:44px;background:var(--navy);color:var(--lime)">' + svg('spark', 22) + '</span><div class="col" style="gap:0;flex:1"><h1 class="h1" style="font-size:19px">ຜູ້ຊ່ວຍການເງິນ AI</h1><span class="muted xs">ວິເຄາະຈາກຂໍ້ມູນໃນ Google Sheets ຂອງເຈົ້າ</span></div></header>' +
+    monthBar('r3d d1') +
+    (ready ? '' : '<div class="warn r3d d2">' + (S.demo ? 'AI ໃຊ້ໄດ້ເມື່ອເປີດ app ຜ່ານລິ້ງ Apps Script.' : 'ຍັງບໍ່ໄດ້ຕັ້ງ GEMINI_API_KEY. ໄປທີ່ Apps Script › Project Settings › Script Properties ແລ້ວເພີ່ມ GEMINI_API_KEY.') + '</div>') +
+    '<button class="btn press r3d d2" data-act="aireport"' + (ready && !S.aiBusy ? '' : ' disabled') + '>' + svg('spark', 18) + (S.aiBusy ? 'ກຳລັງວິເຄາະ…' : 'ສ້າງລາຍງານ ' + monthLabel(S.month)) + '</button>' +
+    '<div class="col" style="gap:10px" id="ai-log">' + S.ai.map((m) => m.role === 'user' ? '<div class="ubub">' + esc(m.text) + '</div>' : '<div class="bubble flipIn">' + mdLite(m.text) + '</div>').join('') + '</div>' +
+    '<div class="chips">' + ['ເດືອນນີ້ໃຊ້ຫຍັງຫຼາຍສຸດ?', 'ທຽບກັບເດືອນກ່ອນ', 'ແນະນຳວິທີປະຢັດ', 'ທ້າຍເດືອນຈະເຫຼືອເທົ່າໃດ?'].map((q) => '<button class="chip" data-act="aiask" data-q="' + esc(q) + '"' + (ready ? '' : ' disabled') + '>' + q + '</button>').join('') + '</div>' +
+    '<div class="row"><label class="field" style="flex:1"><input id="ai-q" placeholder="ຖາມກ່ຽວກັບການໃຊ້ເງິນ…" aria-label="ຄຳຖາມ"' + (ready ? '' : ' disabled') + '></label><button class="ib" style="background:var(--navy);color:var(--lime);border:none;width:48px;height:48px" data-act="aisend" aria-label="ສົ່ງ"' + (ready ? '' : ' disabled') + '>' + svg('send', 20) + '</button></div>';
+}
+async function askAI(question) {
+  if (S.aiBusy) return;
+  S.aiBusy = true;
+  if (question) S.ai.push({ role: 'user', text: question });
+  renderAI();
+  try { const text = await api('aiReport', aiSummary(), question || ''); S.ai.push({ role: 'ai', text: text || '(ບໍ່ມີຄຳຕອບ)' }); }
+  catch (e) { toast('AI ຜິດພາດ: ' + errMsg(e)); }
+  S.aiBusy = false; renderAI();
+  const log = $('#ai-log'); if (log && log.lastElementChild) log.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderNav() {
+  const b = (v, ic, label) => '<button class="' + (S.view === v ? 'on' : '') + '" data-act="go" data-v="' + v + '"' + (S.view === v ? ' aria-current="page"' : '') + '>' + svg(ic, 22, S.view === v ? 2 : 1.8) + label + '</button>';
+  $('#nav').innerHTML = b('home', 'home', 'ໜ້າຫຼັກ') + b('list', 'list', 'ລາຍການ') + '<button class="fab" data-act="add" aria-label="ເພີ່ມລາຍການ">' + svg('plus', 26, 2.2) + '</button>' + b('report', 'chart', 'ລາຍງານ') + b('ai', 'spark', 'ຜູ້ຊ່ວຍ AI');
+}
+function render() {
+  ['home', 'list', 'report', 'ai'].forEach((v) => $('#v-' + v).classList.toggle('on', S.view === v));
+  if (S.view === 'home') renderHome();
+  if (S.view === 'list') renderList();
+  if (S.view === 'report') renderReport();
+  if (S.view === 'ai') renderAI();
+  renderNav();
+}
+
+/* ===== Add transaction ===== */
+function openAdd() {
+  const sug = timeSuggest();
+  S.add = { type: 'exp', amount: '', cur: 'LAK', cat: sug[0], tab: 'fav', date: todayStr(), time: nowTime(), note: '', sug };
+  const ov = $('#ov-add');
+  ov.innerHTML =
+    '<div class="ov-body">' +
+    '<header class="row sb r3d"><button class="ib" data-act="closeadd" aria-label="ປິດ">' + svg('x', 18, 2) + '</button><h1 class="h2" style="font-size:17px">ເພີ່ມລາຍການ</h1><button class="ib" data-act="slip" aria-label="ສະແກນສະລິບ" style="background:var(--navy);color:var(--lime);border:none">' + svg('cam', 20) + '</button></header>' +
+    '<div class="seg r3d d1" style="grid-template-columns:repeat(2,minmax(0,1fr))" id="add-type"></div>' +
+    '<div class="col r3d d2" style="align-items:center;gap:2px"><output id="add-amt" class="amtbig" aria-live="polite"></output><span class="muted xs" id="add-conv"></span></div>' +
+    '<div class="curs r3d d2" id="add-cur" role="group" aria-label="ສະກຸນເງິນ"></div>' +
+    '<div class="col r3d d3" style="gap:10px" id="add-tabwrap"><div class="chips" id="add-tabs" role="tablist" aria-label="ກຸ່ມໝວດ"></div><div class="row sb xs muted" style="padding:0 2px"><span id="add-cap"></span><b id="add-sel" style="color:var(--navy);text-align:right"></b></div></div>' +
+    '<div class="cats" id="add-grid" role="group" aria-label="ເລືອກໝວດ"></div>' +
+    '<div class="g2"><label class="field" style="padding:0 10px"><input type="date" id="add-date" aria-label="ວັນທີ" value="' + S.add.date + '"></label><label class="field" style="padding:0 10px"><input type="time" id="add-time" aria-label="ເວລາ" value="' + S.add.time + '"></label></div>' +
+    '<label class="field"><span class="muted sm" style="flex-shrink:0">ບັນທຶກ</span><input id="add-note" placeholder="ເຊັ່ນ: ກາເຟ ກັບໝູ່" maxlength="200"></label>' +
+    '</div>' +
+    '<div class="ov-foot r3d d4"><div class="keys" id="add-keys"></div><button class="btn press" data-act="save">' + svg('check', 18, 2.4) + 'ບັນທຶກລາຍການ</button></div>';
+  ov.classList.add('on');
+  $('#add-note').addEventListener('input', (e) => { S.add.note = e.target.value; });
+  $('#add-date').addEventListener('change', (e) => { S.add.date = e.target.value; });
+  $('#add-time').addEventListener('change', (e) => { S.add.time = e.target.value; });
+  updateAdd(true);
+}
+function updateAdd(all, gridAnim) {
+  const A = S.add; if (!A) return;
+  const exp = A.type === 'exp';
+  $('#add-type').innerHTML = [['exp', 'ລາຍຈ່າຍ'], ['inc', 'ລາຍຮັບ']].map((x) => '<button class="' + (A.type === x[0] ? 'on' : '') + '" data-act="atype" data-v="' + x[0] + '" aria-pressed="' + (A.type === x[0]) + '">' + x[1] + '</button>').join('');
+  const parts = A.amount.split('.');
+  const txt = A.amount ? fmt(Number(parts[0] || 0)) + (parts.length > 1 ? '.' + parts[1] : '') : '0';
+  const amtEl = $('#add-amt');
+  amtEl.style.color = exp ? 'var(--exp)' : 'var(--inc)';
+  amtEl.innerHTML = (exp ? '−' : '+') + txt + ' <span>' + CUR[A.cur].sym + '</span>';
+  amtEl.classList.remove('bump'); void amtEl.offsetWidth; amtEl.classList.add('bump');
+  const num = parseFloat(A.amount || '0') || 0;
+  $('#add-conv').textContent = A.cur === 'LAK' ? 'ສະກຸນຫຼັກ: ກີບ' : '≈ ' + fmt(Math.round(num * rate(A.cur))) + ' ₭ · ອັດຕາ 1' + CUR[A.cur].sym + ' = ' + fmt(rate(A.cur)) + ' ₭';
+  if (!all) return;
+  $('#add-cur').innerHTML = Object.keys(CUR).map((c) => '<button class="press' + (A.cur === c ? ' on' : '') + '" data-act="acur" data-v="' + c + '" aria-pressed="' + (A.cur === c) + '"><i>' + CUR[c].sym + '</i>' + CUR[c].name + '</button>').join('');
+  $('#add-tabwrap').style.display = exp ? '' : 'none';
+  const tabs = [{ id: 'fav', label: '✦ ໃຊ້ບ່ອຍ', items: favList() }].concat(GROUPS);
+  if (exp) {
+    $('#add-tabs').innerHTML = tabs.map((g) => '<button role="tab" class="chip' + (A.tab === g.id ? ' on' : '') + '" aria-selected="' + (A.tab === g.id) + '" data-act="atab" data-v="' + g.id + '">' + g.label + '<span class="cnt">' + g.items.length + '</span></button>').join('');
+    const g = tabs.find((x) => x.id === A.tab) || tabs[0];
+    $('#add-cap').textContent = A.tab === 'fav' ? '✦ = AI ແນະນຳຕາມເວລາ ' + nowTime() : g.label + ' · ' + g.items.length + ' ລາຍການ';
+  }
+  $('#add-sel').textContent = catName(A.cat);
+  const ids = exp ? (tabs.find((x) => x.id === A.tab) || tabs[0]).items : INC_IDS;
+  const grid = $('#add-grid');
+  grid.innerHTML = ids.map((id) => {
+    const tn = catTint(id);
+    const ai = exp && A.tab === 'fav' && A.sug.indexOf(id) >= 0;
+    return '<button class="cat press' + (A.cat === id ? ' on' : '') + '" data-act="acat" data-v="' + id + '" aria-pressed="' + (A.cat === id) + '"><span class="ci" style="background:' + tn[0] + ';color:' + tn[1] + '">' + svg(id, 22) + (ai ? '<span class="badge" aria-hidden="true"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg></span>' : '') + '</span><span class="cl">' + esc(catName(id)) + '</span></button>';
+  }).join('');
+  if (gridAnim) { grid.classList.remove('tileIn'); void grid.offsetWidth; grid.classList.add('tileIn'); }
+  const special = A.cur === 'LAK' ? '000' : '.';
+  $('#add-keys').innerHTML = ['1', '2', '3', '4', '5', '6', '7', '8', '9', special, '0', 'back'].map((k) => '<button class="press" data-act="key" data-v="' + k + '" aria-label="' + (k === 'back' ? 'ລຶບ' : k) + '">' + (k === 'back' ? svg('bksp', 22) : k) + '</button>').join('');
+}
+function pressKey(k) {
+  const A = S.add; let a = A.amount;
+  if (k === 'back') a = a.slice(0, -1);
+  else if (k === '.') { if (a.indexOf('.') < 0) a = (a || '0') + '.'; }
+  else if (a === '' && (k === '0' || k === '000')) a = '';
+  else if (a.indexOf('.') >= 0 && a.split('.')[1].length >= 2) a = a;
+  else if ((a + k).replace('.', '').length <= 11) a = a + k;
+  A.amount = a; updateAdd(false);
+}
+async function saveAdd() {
+  const A = S.add;
+  const amount = parseFloat(A.amount || '0');
+  if (!amount) { toast('ກະລຸນາໃສ່ຈຳນວນເງິນ'); return; }
+  const btn = document.querySelector('[data-act="save"]'); btn.disabled = true;
+  try {
+    const o = await api('addTx', { type: A.type, category: A.cat, amount, currency: A.cur, date: A.date, time: A.time, note: A.note, source: 'manual' });
+    S.tx.push(o);
+    closeOv('#ov-add');
+    S.month = String(o.date).slice(0, 7);
+    toast('ບັນທຶກແລ້ວ: ' + catName(o.category) + ' ' + fmt(o.amount, o.currency === 'LAK' ? 0 : 2) + ' ' + CUR[o.currency].sym);
+    render();
+  } catch (e) { toast('ບັນທຶກບໍ່ສຳເລັດ: ' + errMsg(e)); btn.disabled = false; }
+}
+function closeOv(sel) { const ov = $(sel); ov.classList.remove('on'); ov.innerHTML = ''; if (sel === '#ov-add') S.add = null; if (sel === '#ov-slip') S.slip = null; }
+
+/* ===== Slip import ===== */
+function openSlip() {
+  S.slip = { step: 'pick', items: [], idx: 0 };
+  $('#ov-slip').classList.add('on');
+  renderSlip();
+}
+function resizeImage(file, max) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = () => {
+      let w = img.naturalWidth, h = img.naturalHeight; const s = Math.min(1, (max || 1400) / Math.max(w, h)); w = Math.round(w * s); h = Math.round(h * s);
+      const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h);
+      res({ url, b64: c.toDataURL('image/jpeg', 0.85).split(',')[1], mime: 'image/jpeg' });
+    };
+    img.onerror = () => rej(new Error('ອ່ານຮູບບໍ່ໄດ້'));
+    img.src = url;
+  });
+}
+function slipFiles(files) {
+  const room = 20 - S.slip.items.length;
+  Array.prototype.slice.call(files, 0, Math.max(room, 0)).forEach((f) => S.slip.items.push({ file: f, url: URL.createObjectURL(f), status: 'wait' }));
+  if (files.length > room) toast('ເລືອກໄດ້ສູງສຸດ 20 ຮູບຕໍ່ຄັ້ງ');
+  renderSlip();
+}
+async function slipRead() {
+  const SL = S.slip; SL.step = 'read'; renderSlip();
+  const refs = {}; S.tx.forEach((t) => { if (t.ref) refs[t.ref] = 1; });
+  for (let i = 0; i < SL.items.length; i++) {
+    const it = SL.items[i]; if (!S.slip) return;
+    it.status = 'busy'; renderSlip();
+    try {
+      const img = await resizeImage(it.file, 1400);
+      const d = await api('readSlip', img.b64, img.mime, S.settings.owner_name || '');
+      it.data = d;
+      it.type = d.suggested_type === 'inc' ? 'inc' : 'exp';
+      it.cat = d.suggested_category;
+      const cp = String(d.counterparty || '').toUpperCase();
+      const rule = cp && S.rules.find((r) => r.match && cp.indexOf(String(r.match).toUpperCase()) >= 0);
+      if (rule) { it.type = rule.type === 'inc' ? 'inc' : 'exp'; it.cat = rule.category; it.ruled = true; }
+      if ((it.type === 'exp' ? EXP_IDS : INC_IDS).indexOf(it.cat) < 0) it.cat = it.type === 'exp' ? 'other' : 'other_inc';
+      it.dup = !!(d.ref && refs[d.ref]);
+      if (d.ref) refs[d.ref] = 1;
+      it.skip = it.dup || !d.amount;
+      it.remember = false;
+      it.status = 'ok';
+    } catch (e) { it.status = 'err'; it.err = errMsg(e); it.skip = true; }
+    renderSlip();
+  }
+  if (!S.slip) return;
+  const okIdx = SL.items.findIndex((x) => x.status === 'ok');
+  if (okIdx < 0) { SL.step = 'read'; renderSlip(); toast('ອ່ານສະລິບບໍ່ສຳເລັດ'); return; }
+  SL.step = 'review'; SL.idx = okIdx; renderSlip();
+}
+function slipNav(dir) {
+  const SL = S.slip; let i = SL.idx + dir;
+  while (i >= 0 && i < SL.items.length && SL.items[i].status !== 'ok') i += dir;
+  if (i >= SL.items.length) { SL.step = 'done'; renderSlip(); return; }
+  if (i < 0) return;
+  SL.idx = i; renderSlip();
+}
+async function slipSave() {
+  const SL = S.slip;
+  const list = SL.items.filter((x) => x.status === 'ok' && !x.skip).map((x) => ({
+    type: x.type, category: x.cat, amount: x.data.amount, currency: x.data.currency, date: /^\d{4}-\d{2}-\d{2}$/.test(x.data.date || '') ? x.data.date : todayStr(),
+    time: /^\d{2}:\d{2}$/.test(x.data.time || '') ? x.data.time : '', note: x.data.memo || '', ref: x.data.ref || '', counterparty: x.data.counterparty || '', source: 'slip'
+  }));
+  if (!list.length) { toast('ບໍ່ມີລາຍການທີ່ຈະບັນທຶກ'); return; }
+  const btn = document.querySelector('[data-act="slipsave"]'); if (btn) btn.disabled = true;
+  try {
+    const r = await api('addTxBatch', list);
+    for (const x of SL.items) { if (x.status === 'ok' && !x.skip && x.remember && x.data.counterparty) { try { S.rules = await api('saveRule', { match: x.data.counterparty, type: x.type, category: x.cat }); } catch (e) { } } }
+    S.tx = S.tx.concat(r.saved || []);
+    closeOv('#ov-slip'); closeOv('#ov-add');
+    toast('ບັນທຶກ ' + (r.saved || []).length + ' ລາຍການ' + (r.skipped ? ', ຂ້າມສະລິບຊ້ຳ ' + r.skipped : ''));
+    S.view = 'home'; render();
+  } catch (e) { toast('ບັນທຶກບໍ່ສຳເລັດ: ' + errMsg(e)); if (btn) btn.disabled = false; }
+}
+function renderSlip() {
+  const SL = S.slip; if (!SL) return;
+  const ov = $('#ov-slip');
+  const head = (title, back) => '<header class="row" style="gap:12px"><button class="ib" data-act="' + back + '" aria-label="ກັບຄືນ">' + svg('left', 18, 2) + '</button><div class="col" style="gap:0;flex:1"><h1 class="h2" style="font-size:18px">' + title + '</h1><span class="muted xs">ຕົວເລກສີແດງ = ລາຍຈ່າຍ · ສີຂຽວ = ລາຍຮັບ</span></div></header>';
+  let body = '', foot = '';
+  if (SL.step === 'pick' || SL.step === 'read') {
+    const reading = SL.step === 'read';
+    body = head('ນຳເຂົ້າສະລິບ', 'closeslip') +
+      (reading ? '' : '<label for="slip-file" class="card r3d" style="border:2px dashed #CFCCC5;align-items:center;text-align:center;cursor:pointer"><span class="ico float3d" style="width:52px;height:52px;background:var(--navy);color:var(--lime)">' + svg('img', 26) + '</span><b class="sm">ແຕະເພື່ອເລືອກຮູບສະລິບ (ໄດ້ຫຼາຍຮູບພ້ອມກັນ)</b><span class="muted xs">BCEL One, LDB Trust ຫຼື ສະລິບທະນາຄານອື່ນ · ສູງສຸດ 20 ຮູບ</span></label>') +
+      (SL.items.length ? '<div class="thumbs">' + SL.items.map((it, i) => '<div class="thumb"><img src="' + it.url + '" alt="ສະລິບ ' + (i + 1) + '">' + (it.status === 'busy' ? '<div class="scan"></div>' : '') +
+        (it.status === 'ok' ? '<span class="tag" style="position:absolute;left:4px;bottom:4px;background:' + (it.type === 'exp' ? 'var(--expT);color:#9C3F0E' : 'var(--greenT);color:#14532D') + '">' + (it.type === 'exp' ? 'ຈ່າຍ' : 'ຮັບ') + '</span>' : '') +
+        (it.status === 'err' ? '<span class="tag" style="position:absolute;left:4px;bottom:4px;background:var(--ambT);color:#6B4100">ຜິດພາດ</span>' : '') +
+        (reading ? '' : '<button class="rm" data-act="sliprm" data-i="' + i + '" aria-label="ລຶບຮູບທີ ' + (i + 1) + '">' + svg('x', 12, 3) + '</button>') + '</div>').join('') + '</div>' : '') +
+      (SL.items.some((x) => x.status === 'err') ? '<div class="warn">' + esc((SL.items.find((x) => x.status === 'err') || {}).err) + '</div>' : '');
+    const done = SL.items.filter((x) => x.status === 'ok' || x.status === 'err').length;
+    foot = reading ? '<button class="btn" disabled>' + svg('spark', 18) + 'AI ກຳລັງອ່ານ ' + done + '/' + SL.items.length + '…</button>'
+      : '<button class="btn press" data-act="slipread"' + (SL.items.length ? '' : ' disabled') + '>' + svg('spark', 18) + 'ໃຫ້ AI ອ່ານ ' + SL.items.length + ' ສະລິບ</button>';
+  } else if (SL.step === 'review') {
+    const okItems = SL.items.filter((x) => x.status === 'ok');
+    const pos = okItems.indexOf(SL.items[SL.idx]);
+    const it = SL.items[SL.idx], d = it.data;
+    const exp = it.type === 'exp';
+    const colorSaysExp = d.amount_color === 'red' ? true : d.amount_color === 'green' ? false : null;
+    const dirSaysExp = d.direction === 'out' ? true : d.direction === 'in' ? false : null;
+    const conflict = colorSaysExp !== null && dirSaysExp !== null && colorSaysExp !== dirSaysExp;
+    const ids = exp ? EXP_IDS : INC_IDS;
+    const c = d.currency || 'LAK';
+    body = head('ລະບຸໝວດສະລິບ', 'slipback') +
+      '<div class="pg" style="grid-template-columns:repeat(' + okItems.length + ',minmax(0,1fr))">' + okItems.map((x, i) => '<div class="' + (i <= pos ? 'on' : '') + '"></div>').join('') + '</div>' +
+      '<section class="card flipIn" style="box-shadow:0 20px 36px -24px rgba(2,30,58,.45)"><div class="row" style="align-items:flex-start;gap:12px"><img src="' + it.url + '" alt="ຮູບສະລິບ" style="width:64px;height:88px;object-fit:cover;border-radius:10px;border:1px solid var(--line);flex-shrink:0"><div class="col" style="flex:1;min-width:0;gap:3px"><b style="font-size:15px;line-height:1.4;word-break:break-word">' + esc(d.counterparty || 'ບໍ່ພົບຊື່') + '</b><span class="muted xs">' + esc([d.date, d.time].filter(Boolean).join(' · ')) + '</span><span class="muted xs">ສະລິບ ' + (pos + 1) + ' / ' + okItems.length + '</span></div></div>' +
+      '<div class="row sb" style="flex-wrap:wrap"><span style="font-size:30px;font-weight:700;letter-spacing:-.03em;color:' + (exp ? 'var(--exp)' : 'var(--green)') + '">' + (exp ? '−' : '+') + fmt(d.amount, c === 'LAK' ? 0 : 2) + ' ' + CUR[c].sym + '</span><span class="tag" style="background:' + (exp ? 'var(--expT);color:#9C3F0E' : 'var(--greenT);color:#14532D') + '">' + (d.amount_color === 'red' ? 'ສີແດງ → ' : d.amount_color === 'green' ? 'ສີຂຽວ → ' : '') + (exp ? 'ລາຍຈ່າຍ' : 'ລາຍຮັບ') + '</span></div>' +
+      (c !== 'LAK' ? '<span class="muted xs">≈ ' + fmt(Math.round(d.amount * rate(c))) + ' ₭ · ອັດຕາ 1' + CUR[c].sym + ' = ' + fmt(rate(c)) + ' ₭</span>' : '') +
+      '<div class="col" style="gap:0"><div class="kv"><span>ເລກອ້າງອີງ</span><span>' + esc(d.ref || '—') + '</span></div><div class="kv"><span>ເນື້ອໃນ</span><span>' + esc(d.memo || '—') + '</span></div></div></section>' +
+      (it.dup ? '<div class="warn">ສະລິບນີ້ເຄີຍບັນທຶກແລ້ວ (ເລກອ້າງອີງຊ້ຳ) — ຈະຂ້າມໃຫ້.</div>' : '') +
+      (conflict ? '<div class="warn">ສີຕົວເລກ ແລະ ທິດທາງການໂອນບໍ່ກົງກັນ — ກະລຸນາກວດວ່າເປັນລາຍຈ່າຍ ຫຼື ລາຍຮັບ.</div>' : '') +
+      '<div class="row" style="align-items:flex-start;gap:10px"><span class="ico" style="width:34px;height:34px;background:var(--navy);color:var(--lime)">' + svg('spark', 18) + '</span><div class="bubble" style="flex:1">' + esc(it.ruled ? 'ຈັດໝວດຕາມກົດທີ່ເຈົ້າໃຫ້ຈື່ໄວ້: ' + catName(it.cat) + '. ຖືກຕ້ອງບໍ?' : (d.reason_lo || 'ສະລິບນີ້ແມ່ນໝວດໃດ?')) + '</div></div>' +
+      '<div class="cats">' + ids.map((id) => { const tn = catTint(id); return '<button class="cat press' + (it.cat === id ? ' on' : '') + '" data-act="slipcat" data-v="' + id + '" aria-pressed="' + (it.cat === id) + '"><span class="ci" style="background:' + tn[0] + ';color:' + tn[1] + '">' + svg(id, 22) + '</span><span class="cl">' + esc(catName(id)) + '</span></button>'; }).join('') + '</div>' +
+      '<button class="link" style="margin:0;align-self:flex-start" data-act="sliptype">ບໍ່ແມ່ນ' + (exp ? 'ລາຍຈ່າຍ' : 'ລາຍຮັບ') + '? ປ່ຽນເປັນ' + (exp ? 'ລາຍຮັບ' : 'ລາຍຈ່າຍ') + '</button>' +
+      (d.counterparty ? '<label class="card" style="flex-direction:row;align-items:center;padding:12px 16px"><span class="col" style="flex:1;gap:2px"><b class="sm">ຈື່ໄວ້ສຳລັບຄັ້ງໜ້າ</b><span class="muted xs">' + esc(d.counterparty) + ' → ' + esc(catName(it.cat)) + '</span></span><input type="checkbox" data-act="sliprem"' + (it.remember ? ' checked' : '') + ' style="width:24px;height:24px;accent-color:#021e3a"></label>' : '') +
+      '<label class="row sm" style="gap:8px;min-height:44px"><input type="checkbox" data-act="slipskip"' + (it.skip ? ' checked' : '') + ' style="width:20px;height:20px;accent-color:#021e3a">ບໍ່ບັນທຶກສະລິບນີ້</label>';
+    const last = okItems.indexOf(it) === okItems.length - 1;
+    foot = '<div class="row"><button class="ib" style="width:56px;height:52px" data-act="slipprev" aria-label="ສະລິບກ່ອນໜ້າ"' + (pos === 0 ? ' disabled' : '') + '>' + svg('left', 20, 2) + '</button><button class="btn press" style="flex:1" data-act="slipnext">' + (last ? svg('check', 18, 2.4) + 'ຢືນຢັນ & ເບິ່ງສະຫຼຸບ' : 'ຢືນຢັນ & ຕໍ່ໄປ') + '</button></div>';
+  } else {
+    const ok = SL.items.filter((x) => x.status === 'ok');
+    const keep = ok.filter((x) => !x.skip);
+    const sum = (t) => keep.filter((x) => x.type === t && (t === 'exp' || x.cat !== 'pass')).reduce((a, x) => a + Math.round(x.data.amount * rate(x.data.currency || 'LAK')), 0);
+    body = head('ສະຫຼຸບກ່ອນບັນທຶກ', 'slipback2') +
+      '<section class="hero r3d"><div class="shine"></div><b style="font-size:16px">ກວດແລ້ວ ' + ok.length + ' ສະລິບ · ຈະບັນທຶກ ' + keep.length + '</b><div class="g2"><div class="tile"><span class="hmut xs">ລາຍຈ່າຍ</span><b class="expL">−' + fmt(sum('exp')) + ' ₭</b></div><div class="tile"><span class="hmut xs">ລາຍຮັບ</span><b class="incL">+' + fmt(sum('inc')) + ' ₭</b></div></div></section>' +
+      '<section class="card r3d d1" style="gap:0">' + ok.map((x) => '<div class="tx" style="opacity:' + (x.skip ? '.45' : '1') + '"><span class="col" style="flex:1;min-width:0;gap:3px"><span class="nm" style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.data.counterparty || '—') + '</span><span class="sub">' + esc([x.data.date, x.skip ? (x.dup ? 'ຊ້ຳ — ຂ້າມ' : 'ຂ້າມ') : catName(x.cat)].filter(Boolean).join(' · ')) + '</span></span><span class="amt" style="color:' + (x.type === 'exp' ? 'var(--exp)' : 'var(--green)') + '">' + (x.type === 'exp' ? '−' : '+') + fmt(x.data.amount, x.data.currency === 'LAK' ? 0 : 2) + ' ' + CUR[x.data.currency || 'LAK'].sym + '</span></div>').join('') + '</section>';
+    foot = '<button class="btn press" data-act="slipsave"' + (keep.length ? '' : ' disabled') + '>' + svg('check', 18, 2.4) + 'ບັນທຶກ ' + keep.length + ' ລາຍການ</button>';
+  }
+  ov.innerHTML = '<div class="ov-body">' + body + '</div><div class="ov-foot">' + foot + '</div>';
+}
+
+/* ===== Settings ===== */
+function openSettings() {
+  const st = S.settings;
+  const ov = $('#ov-set');
+  ov.innerHTML = '<div class="ov-body">' +
+    '<header class="row r3d" style="gap:12px"><button class="ib" data-act="closeset" aria-label="ກັບຄືນ">' + svg('left', 18, 2) + '</button><h1 class="h2" style="font-size:18px">ຕັ້ງຄ່າ</h1></header>' +
+    '<section class="hero r3d d1"><div class="shine"></div><div class="row"><span class="ico" style="width:44px;height:44px;background:var(--navy2);color:var(--lime)">' + svg('sheet', 22) + '</span><div class="col" style="gap:2px"><b>Google Sheets</b><span class="hmut xs">' + (S.demo ? 'ໂໝດທົດລອງ — ຍັງບໍ່ເຊື່ອມ' : 'ເຊື່ອມຕໍ່ແລ້ວ · ' + S.tx.length + ' ລາຍການ') + '</span></div></div>' +
+    (S.sheetUrl ? '<a class="act" style="text-decoration:none;height:44px" href="' + esc(S.sheetUrl) + '" target="_blank" rel="noopener">ເປີດ Google Sheet</a>' : '') +
+    '<span class="hmut xs">AI (Gemini): ' + (S.aiKey ? 'ພ້ອມໃຊ້' : 'ຍັງບໍ່ໄດ້ຕັ້ງ GEMINI_API_KEY') + '</span></section>' +
+    '<section class="card r3d d2"><h2 class="h2">ອັດຕາແລກປ່ຽນ (ເປັນກີບ)</h2>' +
+    ['THB', 'USD', 'CNY'].map((c) => '<label class="field"><b style="width:64px">1 ' + CUR[c].sym + ' ' + CUR[c].name + '</b><input type="number" inputmode="decimal" id="rate-' + c + '" value="' + esc(st['rate_' + c]) + '" min="0" step="any" aria-label="ອັດຕາ ' + CUR[c].name + '"><span class="muted">₭</span></label>').join('') + '</section>' +
+    '<section class="card r3d d3"><h2 class="h2">ຊື່ເຈົ້າຂອງບັນຊີ</h2><span class="muted xs" style="line-height:1.6">ຊ່ວຍໃຫ້ AI ຮູ້ວ່າສະລິບແມ່ນເງິນເຂົ້າ ຫຼື ເງິນອອກ (ພິມຕາມທີ່ຂຶ້ນໃນສະລິບ).</span><label class="field"><input id="owner" value="' + esc(st.owner_name || '') + '" placeholder="ເຊັ່ນ: SOMSAK PHOMMA" aria-label="ຊື່ເຈົ້າຂອງບັນຊີ"></label></section>' +
+    '<section class="card r3d d4"><h2 class="h2">ກົດທີ່ AI ຈື່ໄວ້</h2>' + (S.rules.length ? S.rules.map((r) => '<div class="kv"><span>' + esc(r.match) + '</span><span>' + esc(catName(r.category)) + '</span></div>').join('') : '<span class="muted sm">ຍັງບໍ່ມີ</span>') + '</section>' +
+    '</div><div class="ov-foot"><button class="btn press" data-act="saveset">' + svg('check', 18, 2.4) + 'ບັນທຶກການຕັ້ງຄ່າ</button></div>';
+  ov.classList.add('on');
+}
+async function saveSet() {
+  const obj = { rate_THB: Number($('#rate-THB').value) || 650, rate_USD: Number($('#rate-USD').value) || 21800, rate_CNY: Number($('#rate-CNY').value) || 3000, owner_name: $('#owner').value.trim() };
+  try { S.settings = Object.assign(S.settings, await api('saveSettings', obj)); toast('ບັນທຶກການຕັ້ງຄ່າແລ້ວ'); closeOv('#ov-set'); render(); }
+  catch (e) { toast('ບັນທຶກບໍ່ສຳເລັດ: ' + errMsg(e)); }
+}
+
+/* ===== Transaction sheet (view / delete) ===== */
+function openTx(id) {
+  const t = S.tx.find((x) => x.id === id); if (!t) return;
+  const tn = catTint(t.category);
+  $('#sheet').innerHTML = '<div class="row"><span class="ico" style="background:' + tn[0] + ';color:' + tn[1] + '">' + svg(IC[t.category] ? t.category : 'other', 20) + '</span><div class="col" style="flex:1;gap:2px"><b>' + esc(catName(t.category)) + '</b><span class="muted xs">' + esc(t.date + ' ' + (t.time || '')) + '</span></div>' + amtHtml(t) + '</div>' +
+    (t.note ? '<div class="kv"><span>ບັນທຶກ</span><span>' + esc(t.note) + '</span></div>' : '') + (t.counterparty ? '<div class="kv"><span>ຄູ່ທຸລະກຳ</span><span>' + esc(t.counterparty) + '</span></div>' : '') + (t.ref ? '<div class="kv"><span>ເລກອ້າງອີງ</span><span>' + esc(t.ref) + '</span></div>' : '') +
+    '<div class="g2"><button class="btn light" data-act="sheetclose">ປິດ</button><button class="btn" style="background:var(--exp)" data-act="deltx" data-id="' + esc(t.id) + '">' + svg('trash', 18) + 'ລຶບ</button></div>';
+  $('#sheet-bg').classList.add('on');
+}
+async function delTx(id, btn) {
+  if (btn.dataset.confirm !== '1') { btn.dataset.confirm = '1'; btn.lastChild.textContent = 'ແຕະອີກຄັ້ງເພື່ອຢືນຢັນ'; return; }
+  btn.disabled = true;
+  try { await api('deleteTx', id); S.tx = S.tx.filter((x) => x.id !== id); $('#sheet-bg').classList.remove('on'); toast('ລຶບແລ້ວ'); render(); }
+  catch (e) { toast('ລຶບບໍ່ສຳເລັດ: ' + errMsg(e)); btn.disabled = false; }
+}
+
+/* ===== Events ===== */
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]'); if (!el || el.disabled) return;
+  const a = el.dataset.act, v = el.dataset.v;
+  if (a === 'go') { S.view = v; window.scrollTo(0, 0); render(); }
+  else if (a === 'mprev' || a === 'mnext') { S.month = shiftMonth(S.month, a === 'mprev' ? -1 : 1); if (S.view === 'ai') S.ai = []; render(); }
+  else if (a === 'hide') document.body.classList.toggle('hide');
+  else if (a === 'add') openAdd();
+  else if (a === 'closeadd') closeOv('#ov-add');
+  else if (a === 'atype') { S.add.type = v; S.add.cat = v === 'inc' ? 'salary' : S.add.sug[0]; updateAdd(true, true); }
+  else if (a === 'acur') { S.add.cur = v; S.add.amount = ''; updateAdd(true); }
+  else if (a === 'atab') { S.add.tab = v; updateAdd(true, true); }
+  else if (a === 'acat') { S.add.cat = v; updateAdd(true); }
+  else if (a === 'key') pressKey(v);
+  else if (a === 'save') saveAdd();
+  else if (a === 'slip') openSlip();
+  else if (a === 'closeslip') closeOv('#ov-slip');
+  else if (a === 'sliprm') { S.slip.items.splice(Number(el.dataset.i), 1); renderSlip(); }
+  else if (a === 'slipread') slipRead();
+  else if (a === 'slipcat') { S.slip.items[S.slip.idx].cat = v; renderSlip(); }
+  else if (a === 'sliptype') { const it = S.slip.items[S.slip.idx]; it.type = it.type === 'exp' ? 'inc' : 'exp'; it.cat = it.type === 'exp' ? 'other' : 'other_inc'; renderSlip(); }
+  else if (a === 'sliprem') S.slip.items[S.slip.idx].remember = el.checked;
+  else if (a === 'slipskip') S.slip.items[S.slip.idx].skip = el.checked;
+  else if (a === 'slipnext') slipNav(1);
+  else if (a === 'slipprev') slipNav(-1);
+  else if (a === 'slipback') { S.slip.step = 'pick'; S.slip.items.forEach((x) => { x.status = 'wait'; }); renderSlip(); }
+  else if (a === 'slipback2') { S.slip.step = 'review'; renderSlip(); }
+  else if (a === 'slipsave') slipSave();
+  else if (a === 'settings') openSettings();
+  else if (a === 'closeset') closeOv('#ov-set');
+  else if (a === 'saveset') saveSet();
+  else if (a === 'filter') { S.filter = v; renderList(); }
+  else if (a === 'tx') openTx(el.dataset.id);
+  else if (a === 'sheetclose') $('#sheet-bg').classList.remove('on');
+  else if (a === 'deltx') delTx(el.dataset.id, el);
+  else if (a === 'aireport') askAI('');
+  else if (a === 'aiask') askAI(el.dataset.q);
+  else if (a === 'aisend') { const q = $('#ai-q').value.trim(); if (q) askAI(q); }
+});
+$('#sheet-bg').addEventListener('click', (e) => { if (e.target.id === 'sheet-bg') e.target.classList.remove('on'); });
+$('#slip-file').addEventListener('change', (e) => { if (S.slip && e.target.files.length) slipFiles(e.target.files); e.target.value = ''; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'ai-q') { const q = e.target.value.trim(); if (q) askAI(q); } });
+
+/* ===== Start ===== */
+(async function init() {
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { });
+  if (API_ON && !getToken()) { showTokenScreen(''); return; }
+  try {
+    const d = await api('getInit');
+    S.tx = d.tx || []; S.settings = Object.assign(S.settings, d.settings || {}); S.rules = d.rules || []; S.aiKey = !!d.aiKey; S.demo = !!d.demo; S.sheetUrl = d.sheetUrl || '';
+  } catch (e) {
+    if (e.auth) { showTokenScreen(errMsg(e)); return; }
+    toast('ໂຫຼດຂໍ້ມູນບໍ່ສຳເລັດ: ' + errMsg(e));
+  }
+  $('#loading').style.display = 'none';
+  render();
+})();
+</script>
+</body>
+</html>
