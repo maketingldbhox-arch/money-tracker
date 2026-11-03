@@ -14,7 +14,7 @@ const CURRENCIES = ['LAK', 'THB', 'USD', 'CNY'];
 const EXP_CATS = {
   coffee: 'ກາເຟ', breakfast: 'ອາຫານເຊົ້າ', lunch: 'ອາຫານສວາຍ', dinner: 'ອາຫານຄ່ຳ', snack: 'ເຂົ້າໜົມ - ເຄື່ອງດື່ມ',
   market: 'ອອກຕະຫຼາດ', fuel: 'ນ້ຳມັນລົດ', border: 'ຄ່າຜ່ານແດນ ຕມ', shipping: 'ຄ່າຂົນສົ່ງ - ພັດສະດຸ', hair: 'ຕັດຜົມ',
-  cosmetic: 'ເຄື່ອງສຳອາງ', health: 'ສຸຂະພາບ', water: 'ຄ່ານ້ຳປະປາ', power: 'ຄ່າໄຟຟ້າ', internet: 'ຄ່າອິນເຕີເນັດບ້ານ', subs: 'ຄ່າສະມາຊິກລາຍເດືອນ', ai_sub: 'ຄ່າບໍລິການ AI ລາຍເດືອນ',
+  cosmetic: 'ເຄື່ອງສຳອາງ', health: 'ສຸຂະພາບ', water: 'ຄ່ານ້ຳປະປາ', power: 'ຄ່າໄຟຟ້າ', internet: 'ຄ່າອິນເຕີເນັດບ້ານ', subs: 'ຄ່າສະມາຊິກລາຍເດືອນ', ai_sub: 'ຄ່າບໍລິການ AI ລາຍເດືອນ', garbage: 'ຄ່າຂີ້ເຫຍື້ອ',
   online: 'Shopping Online', topup: 'ຕື່ມເງິນໂທລະສັບ', general: 'ໃຊ້ຈ່າຍທົ່ວໄປ', other: 'ອື່ນໆ'
 };
 const INC_CATS = {

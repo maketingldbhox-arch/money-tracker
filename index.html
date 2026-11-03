@@ -287,6 +287,7 @@ const IC = {
   power: 'M13 2 4 14h7l-1 8 9-12h-7z',
   internet: 'M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0M12 19.5h.01',
   subs: 'M3 5h18v14H3zM3 10h18M7 15h4' + ring(17, 15, 1.5),
+  garbage: 'M5 7h14l-1.2 13a1 1 0 0 1-1 .9H7.2a1 1 0 0 1-1-.9zM3 7h18M9 7V4h6v3M10 11l.4 6M14 11l-.4 6',
   ai_sub: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM5 17l.7 1.8L7.5 19.5l-1.8.7L5 22l-.7-1.8-1.8-.7 1.8-.7z',
   other: ring(6, 12, 1.5) + ring(12, 12, 1.5) + ring(18, 12, 1.5),
   salary: 'M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-4v4M16 13.5h2',
@@ -305,7 +306,7 @@ const CATS = {
   snack: ['ເຂົ້າໜົມ - ເຄື່ອງດື່ມ', 'food'], market: ['ອອກຕະຫຼາດ', 'food'],
   fuel: ['ນ້ຳມັນລົດ', 'travel'], border: ['ຄ່າຜ່ານແດນ ຕມ', 'travel'], shipping: ['ຄ່າຂົນສົ່ງ - ພັດສະດຸ', 'travel'],
   hair: ['ຕັດຜົມ', 'self'], cosmetic: ['ເຄື່ອງສຳອາງ', 'self'], health: ['ສຸຂະພາບ', 'self'],
-  water: ['ຄ່ານ້ຳປະປາ', 'bill'], power: ['ຄ່າໄຟຟ້າ', 'bill'], internet: ['ຄ່າອິນເຕີເນັດບ້ານ', 'bill'], subs: ['ຄ່າສະມາຊິກລາຍເດືອນ', 'bill'], ai_sub: ['ຄ່າບໍລິການ AI ລາຍເດືອນ', 'bill'],
+  water: ['ຄ່ານ້ຳປະປາ', 'bill'], power: ['ຄ່າໄຟຟ້າ', 'bill'], internet: ['ຄ່າອິນເຕີເນັດບ້ານ', 'bill'], subs: ['ຄ່າສະມາຊິກລາຍເດືອນ', 'bill'], ai_sub: ['ຄ່າບໍລິການ AI ລາຍເດືອນ', 'bill'], garbage: ['ຄ່າຂີ້ເຫຍື້ອ', 'bill'],
   online: ['Shopping Online', 'shop'], topup: ['ຕື່ມເງິນໂທລະສັບ', 'shop'], general: ['ໃຊ້ຈ່າຍທົ່ວໄປ', 'shop'], other: ['ອື່ນໆ', 'shop'],
   salary: ['ເງິນເດືອນ', 'inc'], side: ['ລາຍຮັບເສີມ', 'inc'], bonus: ['ໂບນັດ', 'inc'], interest: ['ດອກເບ້ຍ', 'inc'],
   gift: ['ຂອງຂວັນ', 'inc'], pass: ['ເງິນຜ່ານມື', 'inc'], other_inc: ['ລາຍຮັບອື່ນໆ', 'inc']
@@ -314,7 +315,7 @@ const GROUPS = [
   { id: 'food', label: 'ອາຫານ & ເຄື່ອງດື່ມ', items: ['coffee', 'breakfast', 'lunch', 'dinner', 'snack', 'market'] },
   { id: 'travel', label: 'ເດີນທາງ & ຂົນສົ່ງ', items: ['fuel', 'border', 'shipping'] },
   { id: 'self', label: 'ສ່ວນຕົວ & ສຸຂະພາບ', items: ['hair', 'cosmetic', 'health'] },
-  { id: 'bill', label: 'ຄ່າບໍລິການປະຈຳເດືອນ', items: ['power', 'water', 'internet', 'subs', 'ai_sub'] },
+  { id: 'bill', label: 'ຄ່າບໍລິການປະຈຳເດືອນ', items: ['power', 'water', 'garbage', 'internet', 'subs', 'ai_sub'] },
   { id: 'shop', label: 'ຊື້ເຄື່ອງ & ອື່ນໆ', items: ['online', 'topup', 'general', 'other'] }
 ];
 const EXP_IDS = GROUPS.reduce((a, g) => a.concat(g.items), []);
