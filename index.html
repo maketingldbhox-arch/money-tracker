@@ -213,6 +213,16 @@ nav.nav .fab:active{transform:scale(1.12)}
 .qchip.on{background:var(--acc);color:var(--accfg)}
 .amtin:focus,.selwrap:focus-within{outline:none}
 .selwrap:focus-within{box-shadow:var(--ghi),0 0 0 2px rgba(37,99,201,.45)}
+/* slip summary cards */
+.slc{padding:12px 14px;gap:9px;border-radius:24px}
+.slc.off{opacity:.5}
+.slthb{border:none;background:none;padding:0;flex-shrink:0;display:block;border-radius:12px}
+.slth{width:50px;height:68px;object-fit:cover;border-radius:12px;border:1px solid rgba(255,255,255,.8);box-shadow:var(--gsh);display:block}
+.slc .catsel{min-height:46px}.slc .catsel select{height:44px;font-size:15px}.slc .catsel .ico{width:30px;height:30px;border-radius:10px}
+.slc .field input{font-size:16px}
+label.btn{box-sizing:border-box}
+.slview{position:fixed;inset:0;z-index:200;background:rgba(10,24,44,.72);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+.slview img{max-width:100%;max-height:100%;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 /* glass control in settings */
 .gl-range{width:100%;accent-color:#5A8F00;height:32px}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--ga:.85}}
@@ -674,11 +684,286 @@ async function saveAdd() {
 }
 function closeOv(sel) { const ov = $(sel); ov.classList.remove('on'); ov.innerHTML = ''; if (sel === '#ov-add') S.add = null; if (sel === '#ov-slip') S.slip = null; }
 
-/* ===== Slip import ===== */
+/* ===== Slip import — read on the phone itself (OCR), no server AI needed ===== */
+const OCR_CFG = window.MT_OCR || {};
+const OCR_SRC = OCR_CFG.script || 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const OCR = { p: null, sched: null, workers: 0, growing: 0, state: 'idle' };
+function ocrScript() {
+  if (window.Tesseract) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = OCR_SRC; s.async = true;
+    s.onload = () => res(); s.onerror = () => { s.remove(); rej(new Error('ໂຫຼດຕົວອ່ານສະລິບບໍ່ໄດ້ — ກວດອິນເຕີເນັດ')); };
+    document.head.appendChild(s);
+  });
+}
+function ocrWorker() {
+  const o = { logger: () => { }, errorHandler: () => { } };
+  ['workerPath', 'corePath', 'langPath'].forEach((k) => { if (OCR_CFG[k]) o[k] = OCR_CFG[k]; });
+  const make = window.Tesseract.createWorker(OCR_CFG.langs || ['lao', 'eng'], 1, o);
+  const slow = new Promise((_, rej) => setTimeout(() => rej(new Error('ຕົວອ່ານສະລິບໂຫຼດຊ້າເກີນໄປ')), 60000));
+  return Promise.race([make, slow]);
+}
+function ocrGrow(n) {
+  while (OCR.sched && OCR.workers + OCR.growing < n) {
+    OCR.growing++;
+    ocrWorker().then((w) => { OCR.sched.addWorker(w); OCR.workers++; }).catch(() => { }).then(() => { OCR.growing--; });
+  }
+}
+/* resolves with a scheduler that has at least one worker; grows towards n workers in the background */
+function ocrReady(n) {
+  if (!OCR.p) {
+    OCR.state = 'loading';
+    OCR.p = ocrScript().then(() => ocrWorker()).then((w) => {
+      OCR.sched = window.Tesseract.createScheduler(); OCR.sched.addWorker(w); OCR.workers = 1; OCR.state = 'ready';
+      try { localStorage.setItem('mt_ocr', '1'); } catch (e) { }
+      const el = document.getElementById('ocr-state'); if (el) el.innerHTML = ocrStateHtml();
+      return OCR.sched;
+    });
+    OCR.p.catch(() => { OCR.p = null; OCR.state = 'failed'; const el = document.getElementById('ocr-state'); if (el) el.innerHTML = ocrStateHtml(); });
+  }
+  return OCR.p.then((sc) => { ocrGrow(n || 1); return sc; });
+}
+function ocrStateHtml() {
+  if (OCR.state === 'ready') return svg('check', 14, 2.4) + ' ຕົວອ່ານໃນເຄື່ອງພ້ອມແລ້ວ · ບໍ່ໃຊ້ອິນເຕີເນັດໃນການອ່ານ';
+  if (OCR.state === 'failed') return 'ໂຫຼດຕົວອ່ານໃນເຄື່ອງບໍ່ໄດ້' + (S.aiKey ? ' — ຈະໃຊ້ AI ອ່ານແທນ' : ' — ກວດອິນເຕີເນັດ ແລ້ວລອງໃໝ່');
+  return 'ກຳລັງກຽມຕົວອ່ານໃນເຄື່ອງ… (ຄັ້ງທຳອິດດາວໂຫຼດປະມານ 9MB ເທື່ອດຽວ)';
+}
+
+/* ---------- image → canvas (original colours kept for red/green detection) ---------- */
+function slipCanvas(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = () => {
+      const w0 = img.naturalWidth, h0 = img.naturalHeight;
+      const cap = OCR_CFG.maxSide || 1700;
+      let s = Math.min(1, cap / Math.max(w0, h0));
+      if (w0 * s < 900 && !OCR_CFG.maxSide) s = Math.min(2.5, 900 / w0, 2400 / Math.max(w0, h0));
+      const w = Math.max(1, Math.round(w0 * s)), h = Math.max(1, Math.round(h0 * s));
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      const src = x.getImageData(0, 0, w, h);
+      const px = new Uint8ClampedArray(src.data);   // untouched copy for colour sampling
+      const d = src.data;
+      // to grey for the reader: coloured (red / green) amounts become dark, the faint watermark behind the text becomes white
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        const mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+        let v = (0.299 * r + 0.587 * g + 0.114 * b + mn) / 2;
+        v = v >= 205 ? 255 : v * 1.244;
+        d[i] = d[i + 1] = d[i + 2] = v;
+      }
+      x.putImageData(src, 0, 0);
+      res({ canvas: c, px, w, h });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('ເປີດຮູບບໍ່ໄດ້')); };
+    img.src = url;
+  });
+}
+/* is the text inside this box printed in red or in green? */
+function boxColor(cv, b) {
+  const x0 = Math.max(0, Math.floor(b.x0)), y0 = Math.max(0, Math.floor(b.y0)), x1 = Math.min(cv.w, Math.ceil(b.x1)), y1 = Math.min(cv.h, Math.ceil(b.y1));
+  let red = 0, green = 0, dark = 0, n = 0;
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const i = (y * cv.w + x) * 4, r = cv.px[i], g = cv.px[i + 1], bl = cv.px[i + 2];
+      const mx = Math.max(r, g, bl), mn = Math.min(r, g, bl), d = mx - mn; n++;
+      if (d < 55 || mx < 90) { if (mx < 110) dark++; continue; }
+      let hh = mx === r ? ((g - bl) / d) % 6 : mx === g ? (bl - r) / d + 2 : (r - g) / d + 4;
+      hh *= 60; if (hh < 0) hh += 360;
+      if (hh < 28 || hh > 330) red++; else if (hh > 70 && hh < 186) green++;
+    }
+  }
+  if (!n) return '';
+  if (red > green * 2 && red > n * 0.04 && red > dark) return 'red';
+  if (green > red * 2 && green > n * 0.04 && green > dark) return 'green';
+  return '';
+}
+
+/* ---------- text → fields ---------- */
+const laoSk = (s) => String(s || '').replace(/ຳ/g, 'າ').replace(/[ັິ-ຼ່-ໍ\s]/g, '');
+/* "1,285,000.00", "9.800.000,00", "20.00", "45,000" → number (the reader sometimes swaps , and .) */
+function slipMoney(txt) {
+  const raw = String(txt || '').replace(/[^\d.,+\-−]/g, '').replace(/^[.,]+|[.,]+$/g, '');
+  const m = raw.match(/^([+\-−]?)(\d{1,3})((?:[.,]\d{3})*)(?:[.,](\d{2}))?$/) || raw.match(/^([+\-−]?)(\d+)()[.,](\d{2})$/);
+  if (!m || (!m[3] && m[4] == null)) return null;
+  const val = parseFloat(m[2] + m[3].replace(/[.,]/g, '') + '.' + (m[4] || '0'));
+  return val > 0 ? { val, sign: m[1] === '+' ? '+' : m[1] ? '-' : '' } : null;
+}
+const MON_EN = { JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6, JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12 };
+const p2 = (n) => String(n).padStart(2, '0');
+function slipName(text) {
+  const toks = String(text || '').replace(/[|©®°•·"“”‘’`~_=<>\[\]{}()]/g, ' ').replace(/\s+/g, ' ').trim().split(' ');
+  while (toks.length && (toks[0].length <= 2 || !/[A-Za-z]/.test(toks[0]))) toks.shift();   // logo noise in front of the name
+  while (toks.length && !/[A-Za-z]/.test(toks[toks.length - 1])) toks.pop();
+  const t = toks.join(' ');
+  if (!/^[A-Z][A-Z .'&*\-]{4,}$/.test(t)) return '';
+  if (/^(LAK|THB|USD|CNY|KIP|BAHT)\b/.test(t)) return '';
+  return t.replace(/\s+/g, ' ').trim();
+}
+/* "FT26314K9XQ2\MKX" → "FT26314K9XQ2"; '' when it does not look like a cleanly read reference */
+function slipRef(tk) {
+  const head = String(tk || '').replace(/^[\s:：)\]]+/, '').split(/[\\\/|\s]/)[0], c = head.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  return c.length >= 6 && /\d/.test(c) && !/^(19|20)\d{6}$/.test(c) && head.replace(/[A-Za-z0-9]/g, '').length <= 1 ? c : '';
+}
+function slipDate(text) {
+  let m = text.match(/(20\d{2})\s?[-\/.]\s?(\d{1,2})\s?[-\/.]\s?(\d{1,2})/);
+  if (m && +m[2] <= 12 && +m[3] <= 31) return m[1] + '-' + p2(m[2]) + '-' + p2(m[3]);
+  m = text.match(/(\d{1,2})\s?[-\/.]\s?(\d{1,2})\s?[-\/.]\s?(20\d{2})/);
+  if (m && +m[2] <= 12 && +m[1] <= 31) return m[3] + '-' + p2(m[2]) + '-' + p2(m[1]);
+  m = text.toUpperCase().match(/(\d{1,2})\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\.?,?\s*(20\d{2})/);
+  if (m) return m[3] + '-' + p2(MON_EN[m[2]]) + '-' + p2(m[1]);
+  return '';
+}
+function parseSlip(data, cv, owner) {
+  const lines = (data.lines || []).map((l) => ({ t: String(l.text || '').replace(/\s+/g, ' ').trim(), b: l.bbox, words: l.words || [] }))
+    .filter((l) => l.t && l.b).sort((a, b) => a.b.y0 - b.b.y0);
+  const all = lines.map((l) => l.t).join('\n');
+  const out = { amount: 0, currency: 'LAK', date: '', time: '', ref: '', counterparty: '', memo: '', color: '', sign: '', parties: [] };
+
+  // amount: the number written biggest / in colour
+  const cands = [];
+  lines.forEach((l, li) => l.words.forEach((w) => {
+    const m = w.bbox && slipMoney(w.text); if (!m) return;
+    const val = m.val, hgt = w.bbox.y1 - w.bbox.y0;
+    cands.push({ li, val, hgt, b: w.bbox, sign: m.sign, color: boxColor(cv, w.bbox), label: /ຈານວນ|amount|total|ຍອດ/i.test(laoSk(l.t)) });
+  }));
+  let amt = null;
+  if (cands.length) {
+    const maxH = Math.max.apply(null, cands.map((c) => c.hgt));
+    cands.forEach((c) => { c.score = c.hgt / maxH + (c.color ? 0.35 : 0) + (c.label ? 0.25 : 0); });
+    amt = cands.slice().sort((a, b) => b.score - a.score || a.li - b.li)[0];
+    out.amount = amt.val; out.color = amt.color; out.sign = amt.sign;
+  }
+  const amtLine = amt ? amt.li : lines.length;
+
+  // date & time
+  let dateLine = -1;
+  for (let i = 0; i < lines.length; i++) { const d = slipDate(lines[i].t); if (d) { out.date = d; dateLine = i; break; } }
+  const TIME_RE = /(?:^|[^\d.,:])([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?(?![\d:])/;
+  let tm = null;
+  if (dateLine >= 0) { const rest = lines[dateLine].t.replace(/(20\d{2})\s?[-\/.]\s?\d{1,2}\s?[-\/.]\s?\d{1,2}|\d{1,2}\s?[-\/.]\s?\d{1,2}\s?[-\/.]\s?20\d{2}/, ' '); tm = rest.match(TIME_RE) || rest.match(/(?:^|\s)([01]\d|2[0-3])[ .]([0-5]\d)(?:[ .][0-5]\d)?\s*$/); }
+  if (!tm) tm = all.match(TIME_RE);
+  if (tm) out.time = p2(tm[1]) + ':' + tm[2];
+
+  // currency: trust the 3-letter code, not the symbol (₭ is often misread)
+  const near = amt ? lines[amt.li].t : '';
+  const code = (near.match(/\b(LAK|THB|USD|CNY)\b/) || all.match(/\b(LAK|THB|USD|CNY)\b/) || [])[1];
+  if (code) out.currency = code;
+  else if (/฿|\bBAHT\b/i.test(near)) out.currency = 'THB';
+  else if (/\$/.test(near)) out.currency = 'USD';
+
+  // reference number
+  for (let i = Math.max(dateLine, 0); i < Math.min(amtLine, lines.length) && !out.ref; i++) {
+    const t = lines[i].t; if (i === dateLine && !/[:：]/.test(t.replace(/\d{1,2}:\d{2}(:\d{2})?/g, ''))) continue;
+    const labelled = /ເລກອາງອງ|ອາງອງ|ref|reference|ticket|txn|transaction/i.test(laoSk(t));
+    if (!/[:：]/.test(t) && !labelled) continue;
+    let seen = !/[:：]/.test(t), x0 = lines[i].b.x0;
+    for (const w of lines[i].words) {
+      let tk = String(w.text || '');
+      if (!seen) { const k = tk.search(/[:：]/); if (k < 0) continue; seen = true; tk = tk.slice(k + 1); if (w.bbox) x0 = w.bbox.x1 + 2; if (!tk) continue; }
+      const c = slipRef(tk);
+      if (c || !out.refBox) { out.refBox = { left: Math.max(0, x0 - 8), top: Math.max(0, lines[i].b.y0 - 8), width: Math.max(8, Math.min(cv.w - x0, lines[i].b.x1 - x0 + 24)), height: lines[i].b.y1 - lines[i].b.y0 + 16 }; out.refConf = c ? (w.confidence == null ? 90 : w.confidence) : 0; }
+      if (c) { out.ref = c; break; }
+    }
+  }
+  if (out.ref && out.refConf < 55) out.ref = '';   // a wrong reference is worse than none
+
+  // names of the two parties (sender first, receiver second)
+  let prev = null;
+  for (let i = dateLine + 1; i < Math.min(amtLine, lines.length); i++) {
+    const nm = slipName(lines[i].t); if (!nm) { prev = null; continue; }
+    const hgt = lines[i].b.y1 - lines[i].b.y0;
+    if (prev && lines[i].b.y0 - prev.b.y1 < hgt * 0.7) out.parties[out.parties.length - 1] += ' ' + nm;   // long name wrapped onto two lines
+    else out.parties.push(nm);
+    prev = lines[i];
+  }
+
+  // memo: the text after the 3rd label under the amount ("ເນື້ອໃນ:")
+  let mi = -1;
+  for (let i = amtLine + 1; i < Math.min(lines.length, amtLine + 5); i++) {
+    const sk = laoSk(lines[i].t);
+    if (/ເນ.{0,2}ອ.{0,2}ນ|ເນອ|memo|detail|descr|remark|note|message/i.test(sk.split(/[:：]/)[0]) && /[:：]/.test(lines[i].t)) { mi = i; break; }
+  }
+  if (mi < 0 && amt && lines[amtLine + 2] && /[:：]/.test(lines[amtLine + 2].t) && !/\d[.,]\d{2}\s*$/.test(lines[amtLine + 2].t)) mi = amtLine + 2;
+  if (mi >= 0) {
+    const parts = [lines[mi].t.slice(lines[mi].t.search(/[:：]/) + 1).trim()];
+    for (let i = mi + 1; i < lines.length; i++) {
+      const hgt = lines[i - 1].b.y1 - lines[i - 1].b.y0;
+      if (lines[i].b.y0 - lines[i - 1].b.y1 > hgt * 0.9) break;
+      if (/ສະແກນ|ຄວອາ|ກວດສອບ|QR/i.test(laoSk(lines[i].t))) break;
+      parts.push(lines[i].t);
+    }
+    out.memo = parts.join(' ').replace(/\s+/g, ' ').replace(/^[\s:.\-–|]+|[\s|]+$/g, '').slice(0, 200);
+    if (out.memo.length < 2 || !/[A-Za-z຀-໿฀-๿]/.test(out.memo)) out.memo = '';
+  }
+  slipDecide(out, owner);
+  return out;
+}
+function ownerName() { let o = ''; try { o = localStorage.getItem('mt_owner') || ''; } catch (e) { } return S.settings.owner_name || (S.slip && S.slip.owner) || o; }
+const nameKey = (s) => String(s || '').toUpperCase().replace(/\b(MR|MRS|MS|MISS|DR)\b\.?/g, ' ').replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim();
+function isOwner(name, owner) {
+  const a = nameKey(name).split(' ').filter((x) => x.length >= 3), b = nameKey(owner).split(' ').filter((x) => x.length >= 3);
+  return a.length > 0 && b.length > 0 && a.some((x) => b.indexOf(x) >= 0);
+}
+/* expense or income, and who the other side is */
+function slipDecide(d, owner) {
+  const ps = d.parties || [];
+  const mine = ps.map((p) => isOwner(p, owner));
+  d.unsure = false;
+  if (d.color === 'red') { d.type = 'exp'; d.why = 'ສີແດງ'; }
+  else if (d.color === 'green') { d.type = 'inc'; d.why = 'ສີຂຽວ'; }
+  else if (d.sign === '-') { d.type = 'exp'; d.why = 'ເຄື່ອງໝາຍ −'; }
+  else if (d.sign === '+') { d.type = 'inc'; d.why = 'ເຄື່ອງໝາຍ +'; }
+  else if (ps.length >= 2 && mine[0] && !mine[1]) { d.type = 'exp'; d.why = 'ເຈົ້າເປັນຜູ້ໂອນ'; }
+  else if (ps.length >= 2 && mine[1] && !mine[0]) { d.type = 'inc'; d.why = 'ເຈົ້າເປັນຜູ້ຮັບ'; }
+  else { d.type = 'exp'; d.why = ''; d.unsure = true; }
+  const others = ps.filter((p, i) => !mine[i]);
+  d.counterparty = others.length ? (d.type === 'exp' ? others[others.length - 1] : others[0]) : (ps[d.type === 'exp' ? ps.length - 1 : 0] || '');
+}
+
+/* ---------- category suggestion without AI: your rules → your history → keywords ---------- */
+const CAT_WORDS = [
+  ['fuel', ['ນ້ຳມັນ', 'PETROL', 'FUEL', 'PTT', 'GAS STATION']],
+  ['power', ['ໄຟຟ້າ', 'ຄ່າໄຟ', 'ELECTRICITE', 'ELECTRIC', 'EDL']], ['water', ['ນ້ຳປະປາ', 'ປະປາ', 'ຄ່ານ້ຳ', 'NAM PAPA', 'NAMPAPA', 'WATER SUPPLY']],
+  ['garbage', ['ຂີ້ເຫຍື້ອ', 'GARBAGE', 'WASTE']], ['internet', ['ອິນເຕີເນັດ', 'ເນັດບ້ານ', 'INTERNET', 'FIBER', 'FTTH', 'WIFI']],
+  ['ai_sub', ['ANTHROPIC', 'CLAUDE', 'OPENAI', 'CHATGPT', 'GEMINI', 'MIDJOURNEY', 'PERPLEXITY', 'CURSOR']],
+  ['subs', ['ສະມາຊິກ', 'NETFLIX', 'SPOTIFY', 'YOUTUBE', 'ICLOUD', 'APPLE.COM', 'GOOGLE', 'CANVA', 'SUBSCRIPTION']],
+  ['topup', ['ຕື່ມເງິນ', 'ເຕີມເງິນ', 'TOPUP', 'TOP UP', 'TOP-UP']],
+  ['coffee', ['ກາເຟ', 'CAFE', 'COFFEE']], ['market', ['ຕະຫຼາດ', 'MARKET']],
+  ['shipping', ['ຂົນສົ່ງ', 'ພັດສະດຸ', 'EXPRESS', 'LOGISTIC', 'ANOUSITH', 'MIXAY', 'DELIVERY']], ['border', ['ຜ່ານແດນ', 'IMMIGRATION']],
+  ['health', ['ໂຮງໝໍ', 'ຄ່າຢາ', 'ຄລີນິກ', 'PHARMACY', 'CLINIC', 'HOSPITAL']], ['hair', ['ຕັດຜົມ', 'SALON', 'BARBER']], ['cosmetic', ['ເຄື່ອງສຳອາງ', 'COSMETIC', 'BEAUTY']],
+  ['online', ['SHOPEE', 'LAZADA', 'TIKTOK', 'TAOBAO', 'ALIBABA', 'TEMU']], ['snack', ['ເຂົ້າໜົມ', 'ເຄື່ອງດື່ມ', 'ຊານົມ']],
+  ['@meal', ['ອາຫານ', 'ກິນເຂົ້າ', 'ຄ່າເຂົ້າ', 'ເຂົ້າປຽກ', 'RESTAURANT', 'FOOD']],
+  ['salary', ['ເງິນເດືອນ', 'SALARY', 'PAYROLL']], ['bonus', ['ໂບນັດ', 'BONUS']], ['interest', ['ດອກເບ້ຍ', 'INTEREST']]
+].map((r) => [r[0], r[1].map((w) => (/[຀-໿]/.test(w) ? laoSk(w) : w))]);
+function suggestCat(type, cp, memo, time) {
+  const ids = type === 'exp' ? EXP_IDS : INC_IDS, fallback = type === 'exp' ? 'other' : 'other_inc';
+  const CP = String(cp || '').toUpperCase().trim();
+  const rule = CP && S.rules.find((r) => r.match && CP.indexOf(String(r.match).toUpperCase()) >= 0 && (r.type === 'inc' ? 'inc' : 'exp') === type && ids.indexOf(r.category) >= 0);
+  if (rule) return { cat: rule.category, how: 'ກົດທີ່ຈື່ໄວ້' };
+  if (CP) {
+    const cnt = {}; let best = '';
+    S.tx.forEach((t) => { if ((t.type === 'inc' ? 'inc' : 'exp') === type && String(t.counterparty || '').toUpperCase().trim() === CP && t.category !== fallback && ids.indexOf(t.category) >= 0) { cnt[t.category] = (cnt[t.category] || 0) + 1; if (!best || cnt[t.category] > cnt[best]) best = t.category; } });
+    if (best) return { cat: best, how: 'ຄືຄັ້ງກ່ອນ' };
+  }
+  const hay = laoSk(memo) + ' ' + String(memo || '').toUpperCase() + ' ' + CP;
+  for (const r of CAT_WORDS) {
+    if (!r[1].some((w) => hay.indexOf(w) >= 0)) continue;
+    let id = r[0];
+    if (id === '@meal') { const h = Number(String(time || '').slice(0, 2)); id = !time ? 'lunch' : h < 10 ? 'breakfast' : h < 15 ? 'lunch' : 'dinner'; }
+    if (ids.indexOf(id) >= 0) return { cat: id, how: 'ຈາກເນື້ອໃນ' };
+  }
+  return { cat: fallback, how: '' };
+}
+
+/* ---------- flow ---------- */
 function openSlip() {
-  S.slip = { step: 'pick', items: [], idx: 0 };
+  S.slip = { items: [], t0: 0, ms: 0, running: false };
   $('#ov-slip').classList.add('on');
   renderSlip();
+  ocrReady(1).catch(() => { });
 }
 function resizeImage(file, max) {
   return new Promise((res, rej) => {
@@ -686,133 +971,217 @@ function resizeImage(file, max) {
     img.onload = () => {
       let w = img.naturalWidth, h = img.naturalHeight; const s = Math.min(1, (max || 1400) / Math.max(w, h)); w = Math.round(w * s); h = Math.round(h * s);
       const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h);
-      res({ url, b64: c.toDataURL('image/jpeg', 0.8).split(',')[1], mime: 'image/jpeg' });
+      URL.revokeObjectURL(url);
+      res({ b64: c.toDataURL('image/jpeg', 0.8).split(',')[1], mime: 'image/jpeg' });
     };
     img.onerror = () => rej(new Error('ອ່ານຮູບບໍ່ໄດ້'));
     img.src = url;
   });
 }
 function slipFiles(files) {
-  const room = 20 - S.slip.items.length;
-  Array.prototype.slice.call(files, 0, Math.max(room, 0)).forEach((f) => { const it = { file: f, url: URL.createObjectURL(f), status: 'wait' }; it.prep = resizeImage(f, 1024); it.prep.catch(() => { }); S.slip.items.push(it); });
-  if (files.length > room) toast('ເລືອກໄດ້ສູງສຸດ 20 ຮູບຕໍ່ຄັ້ງ');
+  const SL = S.slip, room = 30 - SL.items.length;
+  Array.prototype.slice.call(files, 0, Math.max(room, 0)).forEach((f) => { SL.items.push({ file: f, url: URL.createObjectURL(f), status: 'wait' }); });
+  if (files.length > room) toast('ເລືອກໄດ້ສູງສຸດ 30 ຮູບຕໍ່ຄັ້ງ');
   renderSlip();
+  slipRun();
 }
-async function readOneSlip(it) {
-  it.status = 'busy'; renderSlip();
+async function slipOcr(it) {
+  const SL = S.slip, cores = navigator.hardwareConcurrency || 4;
+  const sc = await ocrReady(Math.min(SL.items.length, cores >= 8 ? 3 : 2));
+  const cv = await slipCanvas(it.file);
+  const want = { text: true, blocks: true, hocr: false, tsv: false };
+  const r = await sc.addJob('recognize', cv.canvas, {}, want);
+  const d = parseSlip(r.data, cv, ownerName());
+  if (d.refBox && (!d.ref || d.refConf < 85)) {   // reference looked shaky → read just that strip again (fast)
+    try { const r2 = await sc.addJob('recognize', cv.canvas, { rectangle: d.refBox }, want); const ref2 = slipRef(String(r2.data.text || '').trim()); if (ref2 && (!d.ref || r2.data.confidence >= 40)) d.ref = ref2; } catch (e) { }
+  }
+  cv.px = null; cv.canvas.width = cv.canvas.height = 1;
+  return d;
+}
+async function slipAi(it) {
+  const img = await resizeImage(it.file, 1024);
+  const a = await api('readSlip', img.b64, img.mime, S.settings.owner_name || '');
+  const type = a.suggested_type === 'inc' ? 'inc' : 'exp';
+  return { amount: Number(a.amount) || 0, currency: CUR[a.currency] ? a.currency : 'LAK', date: a.date || '', time: a.time || '', ref: a.ref || '', counterparty: a.counterparty || '', memo: a.memo || '', color: a.amount_color || '', parties: [], type, why: a.amount_color === 'red' ? 'ສີແດງ' : a.amount_color === 'green' ? 'ສີຂຽວ' : 'AI', unsure: false, aiCat: a.suggested_category };
+}
+function slipApply(it, d) {
+  it.d = d; it.type = d.type; it.unsure = !!d.unsure;
+  it.cur = CUR[d.currency] ? d.currency : 'LAK';
+  it.amount = d.amount ? amtFormat(String(d.amount), it.cur) : '';
+  it.date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || '') ? d.date : todayStr();
+  it.time = /^\d{2}:\d{2}$/.test(d.time || '') ? d.time : '';
+  it.noDate = !/^\d{4}-\d{2}-\d{2}$/.test(d.date || '');
+  it.note = d.memo || '';
+  const ids = it.type === 'exp' ? EXP_IDS : INC_IDS;
+  const sg = suggestCat(it.type, d.counterparty, d.memo, it.time);
+  if (d.aiCat && ids.indexOf(d.aiCat) >= 0 && !sg.how) { it.cat = d.aiCat; it.how = 'AI'; } else { it.cat = sg.cat; it.how = sg.how; }
+  it.open = !d.amount; it.skip = false; it.touched = false; it.dup = false;
+  it.status = 'ok';
+}
+async function slipReadOne(it, forceAi) {
+  it.status = 'busy'; it.err = ''; slipRenderSoon();
+  const t0 = Date.now();
   try {
-    const img = await (it.prep || resizeImage(it.file, 1024));
-    const d = await api('readSlip', img.b64, img.mime, S.settings.owner_name || '');
-    it.data = d;
-    it.type = d.suggested_type === 'inc' ? 'inc' : 'exp';
-    it.cat = d.suggested_category;
-    const cp = String(d.counterparty || '').toUpperCase();
-    const rule = cp && S.rules.find((r) => r.match && cp.indexOf(String(r.match).toUpperCase()) >= 0);
-    if (rule) { it.type = rule.type === 'inc' ? 'inc' : 'exp'; it.cat = rule.category; it.ruled = true; }
-    if ((it.type === 'exp' ? EXP_IDS : INC_IDS).indexOf(it.cat) < 0) it.cat = it.type === 'exp' ? 'other' : 'other_inc';
-    it.remember = false;
-    it.status = 'ok';
-  } catch (e) { it.status = 'err'; it.err = errMsg(e); it.skip = true; }
-  if (S.slip) renderSlip();
+    let d;
+    if (forceAi) { d = await slipAi(it); it.src = 'ai'; }
+    else {
+      try { d = await slipOcr(it); it.src = 'device'; }
+      catch (e) { if (!S.aiKey || !API_ON) throw e; d = await slipAi(it); it.src = 'ai'; }
+    }
+    slipApply(it, d);
+  } catch (e) { it.status = 'err'; it.err = errMsg(e); }
+  it.ms = Date.now() - t0;
+  if (S.slip) { slipDupes(); slipRenderSoon(); }
 }
-async function slipRead() {
-  const SL = S.slip; SL.step = 'read'; SL.t0 = Date.now(); renderSlip();
-  // read up to 4 slips at the same time
-  const tick = setInterval(() => { if (S.slip === SL && SL.step === 'read') renderSlip(); else clearInterval(tick); }, 1000);
-  let next = 0;
-  const worker = async () => { while (S.slip === SL && next < SL.items.length) { await readOneSlip(SL.items[next++]); } };
-  await Promise.all([worker(), worker(), worker(), worker()]);
-  clearInterval(tick);
+async function slipRun() {
+  const SL = S.slip; if (!SL || SL.running) return;
+  SL.running = true; SL.t0 = Date.now();
+  const pool = async () => { for (;;) { const it = S.slip === SL && SL.items.find((x) => x.status === 'wait'); if (!it) return; await slipReadOne(it); } };
+  await Promise.all([pool(), pool(), pool()]);
+  SL.running = false; SL.ms = Date.now() - SL.t0;
   if (S.slip !== SL) return;
-  const refs = {}; S.tx.forEach((t) => { if (t.ref) refs[t.ref] = 1; });
+  slipOwner(); slipDupes(); slipRenderSoon();
+}
+/* if the owner name is not set, the name that shows up on most slips is the owner */
+function slipOwner() {
+  const SL = S.slip; if (S.settings.owner_name) return;
+  const cnt = {}; const dev = SL.items.filter((x) => x.status === 'ok' && x.src === 'device' && x.d.parties.length);
+  dev.forEach((x) => x.d.parties.forEach((p) => { const k = nameKey(p); if (k) cnt[k] = (cnt[k] || 0) + 1; }));
+  const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+  if (!top || cnt[top] < 2 || cnt[top] < dev.length * 0.6) return;
+  SL.owner = top; try { localStorage.setItem('mt_owner', top); } catch (e) { }
+  dev.forEach((x) => {
+    const before = x.d.counterparty, t0 = x.d.type; slipDecide(x.d, top);
+    if (x.touched) { x.d.type = t0; return; }
+    if (x.d.counterparty !== before || x.d.type !== t0) { x.type = x.d.type; x.unsure = x.d.unsure; const sg = suggestCat(x.type, x.d.counterparty, x.d.memo, x.time); x.cat = sg.cat; x.how = sg.how; }
+  });
+}
+function slipDupes() {
+  const SL = S.slip; if (!SL) return;
+  const refs = {}, keys = {};
+  S.tx.forEach((t) => { if (t.ref) refs[String(t.ref).toUpperCase()] = 1; if (t.source === 'slip') keys[[t.date, String(t.time || '').slice(0, 5), Number(t.amount), t.currency].join('|')] = 1; });
   SL.items.forEach((it) => {
     if (it.status !== 'ok') return;
-    it.dup = !!(it.data.ref && refs[it.data.ref]);
-    if (it.data.ref) refs[it.data.ref] = 1;
-    it.skip = it.dup || !it.data.amount;
+    const ref = String(it.d.ref || '').toUpperCase(), key = [it.date, it.time, amtValue(it.amount), it.cur].join('|');
+    const was = it.dup;
+    it.dup = !!((ref && refs[ref]) || (it.time && amtValue(it.amount) && keys[key]));
+    if (ref) refs[ref] = 1; if (it.time && amtValue(it.amount)) keys[key] = 1;
+    if (it.dup && !was && !it.touched) it.skip = true;
   });
-  const okIdx = SL.items.findIndex((x) => x.status === 'ok');
-  if (okIdx < 0) { SL.step = 'pick'; SL.items.forEach((x) => { if (x.status === 'err') x.status = 'wait'; }); renderSlip(); toast('ອ່ານສະລິບບໍ່ສຳເລັດ, ລອງໃໝ່ອີກຄັ້ງ'); return; }
-  SL.step = 'review'; SL.idx = okIdx; renderSlip();
 }
-function slipNav(dir) {
-  const SL = S.slip; let i = SL.idx + dir;
-  while (i >= 0 && i < SL.items.length && SL.items[i].status !== 'ok') i += dir;
-  if (i >= SL.items.length) { SL.step = 'done'; renderSlip(); return; }
-  if (i < 0) return;
-  SL.idx = i; renderSlip();
-}
+const slipKeep = () => S.slip.items.filter((x) => x.status === 'ok' && !x.skip && amtValue(x.amount) > 0);
 async function slipSave() {
   const SL = S.slip;
-  const list = SL.items.filter((x) => x.status === 'ok' && !x.skip).map((x) => ({
-    type: x.type, category: x.cat, amount: x.data.amount, currency: x.data.currency, date: /^\d{4}-\d{2}-\d{2}$/.test(x.data.date || '') ? x.data.date : todayStr(),
-    time: /^\d{2}:\d{2}$/.test(x.data.time || '') ? x.data.time : '', note: (x.note != null ? x.note : x.data.memo || '').trim(), ref: x.data.ref || '', counterparty: x.data.counterparty || '', source: 'slip'
-  }));
+  const list = slipKeep().map((x) => ({ type: x.type, category: x.cat, amount: amtValue(x.amount), currency: x.cur, date: x.date || todayStr(), time: x.time || '', note: String(x.note || '').trim(), ref: x.d.ref || '', counterparty: x.d.counterparty || '', source: 'slip' }));
   if (!list.length) { toast('ບໍ່ມີລາຍການທີ່ຈະບັນທຶກ'); return; }
   const btn = document.querySelector('[data-act="slipsave"]'); if (btn) btn.disabled = true;
   try {
     const r = await api('addTxBatch', list);
-    for (const x of SL.items) { if (x.status === 'ok' && !x.skip && x.remember && x.data.counterparty) { try { S.rules = await api('saveRule', { match: x.data.counterparty, type: x.type, category: x.cat }); } catch (e) { } } }
     S.tx = S.tx.concat(r.saved || []);
+    SL.items.forEach((x) => { try { URL.revokeObjectURL(x.url); } catch (e) { } });
     closeOv('#ov-slip'); closeOv('#ov-add');
     toast('ບັນທຶກ ' + (r.saved || []).length + ' ລາຍການ' + (r.skipped ? ', ຂ້າມສະລິບຊ້ຳ ' + r.skipped : ''));
     S.view = 'home'; render();
   } catch (e) { toast('ບັນທຶກບໍ່ສຳເລັດ: ' + errMsg(e)); if (btn) btn.disabled = false; }
 }
+
+/* ---------- one summary screen: income and expense slips side by side, confirm once ---------- */
+function slipRenderSoon() {
+  const ae = document.activeElement;
+  if (ae && ae.closest && ae.closest('#ov-slip') && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) { S.slip.pending = true; slipTotals(); return; }
+  renderSlip();
+}
+function slipSum(type) {
+  return slipKeep().filter((x) => x.type === type && (type === 'exp' || x.cat !== 'pass')).reduce((a, x) => a + Math.round(amtValue(x.amount) * rate(x.cur)), 0);
+}
+function slipTotals() {
+  const SL = S.slip; if (!SL) return;
+  const keep = slipKeep();
+  const set = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+  set('sl-exp', '−' + fmt(slipSum('exp')) + ' ₭'); set('sl-inc', '+' + fmt(slipSum('inc')) + ' ₭');
+  set('sl-expn', keep.filter((x) => x.type === 'exp').length + ' ສະລິບ'); set('sl-incn', keep.filter((x) => x.type === 'inc').length + ' ສະລິບ');
+  const b = document.getElementById('sl-save');
+  if (b) { const busy = SL.items.filter((x) => x.status === 'busy' || x.status === 'wait').length; b.disabled = !keep.length || busy > 0; const s = b.querySelector('span'); if (s) s.textContent = busy ? 'ກຳລັງອ່ານ ' + (SL.items.length - busy) + '/' + SL.items.length + '…' : 'ຢືນຢັນບັນທຶກ ' + keep.length + ' ລາຍການ'; }
+}
+function slipCard(it, i) {
+  const thumb = '<button class="slthb" data-act="slview" data-i="' + i + '" aria-label="ເບິ່ງຮູບສະລິບ ' + (i + 1) + '"><img src="' + it.url + '" alt="" class="slth"></button>';
+  if (it.status === 'wait' || it.status === 'busy') return '<div class="card slc"><div class="row" style="gap:12px"><div style="position:relative;overflow:hidden;border-radius:12px;flex-shrink:0">' + thumb + '<div class="scan"></div></div><span class="muted sm">' + (it.status === 'busy' ? 'ກຳລັງອ່ານ…' : 'ລໍຖ້າຄິວ…') + '</span></div></div>';
+  if (it.status === 'err') return '<div class="card slc"><div class="row" style="gap:12px;align-items:flex-start">' + thumb + '<div class="col" style="flex:1;gap:6px"><b class="sm">ອ່ານຮູບນີ້ບໍ່ໄດ້</b><span class="muted xs">' + esc(it.err || '') + '</span><div class="row" style="gap:6px;flex-wrap:wrap"><button class="qchip" data-act="slretry" data-i="' + i + '">ລອງໃໝ່</button>' + (S.aiKey && API_ON ? '<button class="qchip" data-act="slai" data-i="' + i + '">ອ່ານດ້ວຍ AI</button>' : '') + '<button class="qchip" data-act="slrm" data-i="' + i + '">ເອົາອອກ</button></div></div></div></div>';
+  const exp = it.type === 'exp', v = amtValue(it.amount), tn = catTint(it.cat);
+  const tag = (txt, bg, fg) => '<span class="tag" style="background:' + bg + ';color:' + fg + '">' + txt + '</span>';
+  const tags = (it.d.why ? tag(esc(it.d.why) + ' → ' + (exp ? 'ຈ່າຍ' : 'ຮັບ'), exp ? 'var(--expT)' : 'var(--greenT)', exp ? '#9C3F0E' : '#14532D') : '') +
+    (it.unsure && !it.touched ? tag('ກວດວ່າ ຈ່າຍ ຫຼື ຮັບ', 'var(--ambT)', '#6B4100') : '') + (it.dup ? tag('ເຄີຍບັນທຶກແລ້ວ', 'var(--ambT)', '#6B4100') : '') +
+    (it.noDate ? tag('ບໍ່ພົບວັນທີ', 'var(--ambT)', '#6B4100') : '') + (it.src === 'ai' ? tag('ອ່ານດ້ວຍ AI', 'var(--incT)', '#1D4FA3') : '');
+  return '<div class="card slc' + (it.skip ? ' off' : '') + '">' +
+    '<div class="row" style="gap:12px;align-items:flex-start">' + thumb +
+    '<div class="col" style="flex:1;min-width:0;gap:3px"><b style="font-size:14px;line-height:1.35;word-break:break-word">' + esc(it.d.counterparty || 'ບໍ່ພົບຊື່') + '</b><span class="muted xs">' + esc([it.date, it.time].filter(Boolean).join(' · ')) + '</span>' +
+    (it.note && !it.open ? '<span class="xs" style="line-height:1.4;word-break:break-word">' + esc(it.note) + '</span>' : '') +
+    '<span class="money" style="font-size:20px;font-weight:700;color:' + (v ? (exp ? 'var(--exp)' : 'var(--green)') : 'var(--muted)') + '">' + (v ? (exp ? '−' : '+') + fmt(v, CUR[it.cur].dec) + ' ' + CUR[it.cur].sym : 'ອ່ານຈຳນວນເງິນບໍ່ອອກ') + '</span>' +
+    (v && it.cur !== 'LAK' ? '<span class="muted xs">≈ ' + fmt(Math.round(v * rate(it.cur))) + ' ₭</span>' : '') + '</div></div>' +
+    (tags ? '<div class="row" style="gap:6px;flex-wrap:wrap">' + tags + '</div>' : '') +
+    '<label class="selwrap catsel"><span class="ico" style="background:' + tn[0] + ';color:' + tn[1] + '">' + svg(IC[it.cat] ? it.cat : 'other', 18) + '</span><select data-slip="cat" data-i="' + i + '" aria-label="ໝວດລາຍການ">' + catOptions(it.type, it.cat) + '</select></label>' +
+    (it.open ? '<label class="field" style="min-height:46px"><span class="muted" style="flex-shrink:0">' + svg('pen', 15) + '</span><input data-slip="note" data-i="' + i + '" maxlength="200" placeholder="ລາຍລະອຽດ (ພິມເພີ່ມໄດ້)" aria-label="ລາຍລະອຽດ" value="' + esc(it.note || '') + '"></label>' +
+      '<div class="g2"><label class="field" style="min-height:46px"><span class="muted xs" style="flex-shrink:0">ຈຳນວນ</span><input data-slip="amount" data-i="' + i + '" type="text" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="ຈຳນວນເງິນ" value="' + esc(it.amount || '') + '" style="font-weight:700"></label>' +
+      '<label class="selwrap" style="min-height:46px"><select data-slip="cur" data-i="' + i + '" aria-label="ສະກຸນເງິນ" style="height:44px">' + Object.keys(CUR).map((c) => '<option value="' + c + '"' + (c === it.cur ? ' selected' : '') + '>' + CUR[c].sym + ' ' + CUR[c].name + '</option>').join('') + '</select></label>' +
+      '<label class="field" style="min-height:46px;padding:0 10px"><input type="date" data-slip="date" data-i="' + i + '" aria-label="ວັນທີ" value="' + esc(it.date) + '"></label><label class="field" style="min-height:46px;padding:0 10px"><input type="time" data-slip="time" data-i="' + i + '" aria-label="ເວລາ" value="' + esc(it.time) + '"></label></div>' +
+      (it.d.ref ? '<span class="muted xs">ເລກອ້າງອີງ: ' + esc(it.d.ref) + '</span>' : '') : '') +
+    '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="qchip" data-act="sltype" data-i="' + i + '">⇄ ປ່ຽນເປັນ' + (exp ? 'ລາຍຮັບ' : 'ລາຍຈ່າຍ') + '</button><button class="qchip" data-act="slopen" data-i="' + i + '">' + (it.open ? 'ຫຍໍ້' : '✎ ແກ້ໄຂ') + '</button>' +
+    (it.open && it.src !== 'ai' && S.aiKey && API_ON ? '<button class="qchip" data-act="slai" data-i="' + i + '">ອ່ານຄືນດ້ວຍ AI</button>' : '') +
+    '<button class="qchip" data-act="slskip" data-i="' + i + '">' + (it.skip ? '↩ ບັນທຶກສະລິບນີ້' : '✕ ບໍ່ບັນທຶກ') + '</button></div></div>';
+}
 function renderSlip() {
   const SL = S.slip; if (!SL) return;
+  SL.pending = false;
   const ov = $('#ov-slip');
-  const head = (title, back) => '<header class="row" style="gap:12px"><button class="ib" data-act="' + back + '" aria-label="ກັບຄືນ">' + svg('left', 18, 2) + '</button><div class="col" style="gap:0;flex:1"><h1 class="h2" style="font-size:18px">' + title + '</h1><span class="muted xs">ຕົວເລກສີແດງ = ລາຍຈ່າຍ · ສີຂຽວ = ລາຍຮັບ</span></div></header>';
-  let body = '', foot = '';
-  if (SL.step === 'pick' || SL.step === 'read') {
-    const reading = SL.step === 'read';
-    body = head('ນຳເຂົ້າສະລິບ', 'closeslip') +
-      (reading ? '' : '<label for="slip-file" class="card r3d" style="border:2px dashed #CFCCC5;align-items:center;text-align:center;cursor:pointer"><span class="ico accent float3d" style="width:52px;height:52px">' + svg('img', 26) + '</span><b class="sm">ແຕະເພື່ອເລືອກຮູບສະລິບ (ໄດ້ຫຼາຍຮູບພ້ອມກັນ)</b><span class="muted xs">BCEL One, LDB Trust ຫຼື ສະລິບທະນາຄານອື່ນ · ສູງສຸດ 20 ຮູບ</span></label>') +
-      (SL.items.length ? '<div class="thumbs">' + SL.items.map((it, i) => '<div class="thumb"><img src="' + it.url + '" alt="ສະລິບ ' + (i + 1) + '">' + (it.status === 'busy' ? '<div class="scan"></div>' : '') +
-        (it.status === 'ok' ? '<span class="tag" style="position:absolute;left:4px;bottom:4px;background:' + (it.type === 'exp' ? 'var(--expT);color:#9C3F0E' : 'var(--greenT);color:#14532D') + '">' + (it.type === 'exp' ? 'ຈ່າຍ' : 'ຮັບ') + '</span>' : '') +
-        (it.status === 'err' ? '<span class="tag" style="position:absolute;left:4px;bottom:4px;background:var(--ambT);color:#6B4100">ຜິດພາດ</span>' : '') +
-        (reading ? '' : '<button class="rm" data-act="sliprm" data-i="' + i + '" aria-label="ລຶບຮູບທີ ' + (i + 1) + '">' + svg('x', 12, 3) + '</button>') + '</div>').join('') + '</div>' : '') +
-      (SL.items.some((x) => x.status === 'err') ? '<div class="warn">' + esc((SL.items.find((x) => x.status === 'err') || {}).err) + '</div>' : '');
-    const done = SL.items.filter((x) => x.status === 'ok' || x.status === 'err').length;
-    foot = reading ? '<button class="btn" disabled>' + svg('spark', 18) + 'AI ກຳລັງອ່ານ ' + done + '/' + SL.items.length + ' · ' + Math.round((Date.now() - (SL.t0 || Date.now())) / 1000) + ' ວິ…</button>'
-      : '<button class="btn press" data-act="slipread"' + (SL.items.length ? '' : ' disabled') + '>' + svg('spark', 18) + 'ໃຫ້ AI ອ່ານ ' + SL.items.length + ' ສະລິບ</button>';
-  } else if (SL.step === 'review') {
-    const okItems = SL.items.filter((x) => x.status === 'ok');
-    const pos = okItems.indexOf(SL.items[SL.idx]);
-    const it = SL.items[SL.idx], d = it.data;
-    const exp = it.type === 'exp';
-    const colorSaysExp = d.amount_color === 'red' ? true : d.amount_color === 'green' ? false : null;
-    const dirSaysExp = d.direction === 'out' ? true : d.direction === 'in' ? false : null;
-    const conflict = colorSaysExp !== null && dirSaysExp !== null && colorSaysExp !== dirSaysExp;
-    const ids = exp ? EXP_IDS : INC_IDS;
-    const c = d.currency || 'LAK';
-    body = head('ລະບຸໝວດສະລິບ', 'slipback') +
-      '<div class="pg" style="grid-template-columns:repeat(' + okItems.length + ',minmax(0,1fr))">' + okItems.map((x, i) => '<div class="' + (i <= pos ? 'on' : '') + '"></div>').join('') + '</div>' +
-      '<section class="card flipIn" style="box-shadow:0 20px 36px -24px rgba(2,30,58,.45)"><div class="row" style="align-items:flex-start;gap:12px"><img src="' + it.url + '" alt="ຮູບສະລິບ" style="width:64px;height:88px;object-fit:cover;border-radius:10px;border:1px solid var(--line);flex-shrink:0"><div class="col" style="flex:1;min-width:0;gap:3px"><b style="font-size:15px;line-height:1.4;word-break:break-word">' + esc(d.counterparty || 'ບໍ່ພົບຊື່') + '</b><span class="muted xs">' + esc([d.date, d.time].filter(Boolean).join(' · ')) + '</span><span class="muted xs">ສະລິບ ' + (pos + 1) + ' / ' + okItems.length + '</span></div></div>' +
-      '<div class="row sb" style="flex-wrap:wrap"><span style="font-size:30px;font-weight:700;letter-spacing:-.03em;color:' + (exp ? 'var(--exp)' : 'var(--green)') + '">' + (exp ? '−' : '+') + fmt(d.amount, c === 'LAK' ? 0 : 2) + ' ' + CUR[c].sym + '</span><span class="tag" style="background:' + (exp ? 'var(--expT);color:#9C3F0E' : 'var(--greenT);color:#14532D') + '">' + (d.amount_color === 'red' ? 'ສີແດງ → ' : d.amount_color === 'green' ? 'ສີຂຽວ → ' : '') + (exp ? 'ລາຍຈ່າຍ' : 'ລາຍຮັບ') + '</span></div>' +
-      (c !== 'LAK' ? '<span class="muted xs">≈ ' + fmt(Math.round(d.amount * rate(c))) + ' ₭ · ອັດຕາ 1' + CUR[c].sym + ' = ' + fmt(rate(c)) + ' ₭</span>' : '') +
-      '<div class="col" style="gap:0"><div class="kv"><span>ເລກອ້າງອີງ</span><span>' + esc(d.ref || '—') + '</span></div></div>' +
-      '<label class="field" style="align-items:flex-start;padding:10px 14px;gap:8px"><span class="muted sm" style="flex-shrink:0;padding-top:3px">' + svg('pen', 16) + '</span><span class="col" style="flex:1;gap:2px"><span class="muted xs">ລາຍລະອຽດ (ແກ້ໄຂໄດ້)</span><textarea id="slip-note" rows="2" maxlength="300" placeholder="ພິມລາຍລະອຽດ…" aria-label="ລາຍລະອຽດສະລິບ" style="resize:none;line-height:1.5;padding:0">' + esc(it.note != null ? it.note : (d.memo || '')) + '</textarea></span></label></section>' +
-      (it.dup ? '<div class="warn">ສະລິບນີ້ເຄີຍບັນທຶກແລ້ວ (ເລກອ້າງອີງຊ້ຳ) — ຈະຂ້າມໃຫ້.</div>' : '') +
-      (conflict ? '<div class="warn">ສີຕົວເລກ ແລະ ທິດທາງການໂອນບໍ່ກົງກັນ — ກະລຸນາກວດວ່າເປັນລາຍຈ່າຍ ຫຼື ລາຍຮັບ.</div>' : '') +
-      '<div class="row" style="align-items:flex-start;gap:10px"><span class="ico accent" style="width:34px;height:34px">' + svg('spark', 18) + '</span><div class="bubble" style="flex:1">' + esc(it.ruled ? 'ຈັດໝວດຕາມກົດທີ່ເຈົ້າໃຫ້ຈື່ໄວ້: ' + catName(it.cat) + '. ຖືກຕ້ອງບໍ?' : (d.reason_lo || 'ສະລິບນີ້ແມ່ນໝວດໃດ?')) + '</div></div>' +
-      '<div class="cats">' + ids.map((id) => { const tn = catTint(id); return '<button class="cat press' + (it.cat === id ? ' on' : '') + '" data-act="slipcat" data-v="' + id + '" aria-pressed="' + (it.cat === id) + '"><span class="ci" style="background:' + tn[0] + ';color:' + tn[1] + '">' + svg(id, 22) + '</span><span class="cl">' + esc(catName(id)) + '</span></button>'; }).join('') + '</div>' +
-      '<button class="link" style="margin:0;align-self:flex-start" data-act="sliptype">ບໍ່ແມ່ນ' + (exp ? 'ລາຍຈ່າຍ' : 'ລາຍຮັບ') + '? ປ່ຽນເປັນ' + (exp ? 'ລາຍຮັບ' : 'ລາຍຈ່າຍ') + '</button>' +
-      (d.counterparty ? '<label class="card" style="flex-direction:row;align-items:center;padding:12px 16px"><span class="col" style="flex:1;gap:2px"><b class="sm">ຈື່ໄວ້ສຳລັບຄັ້ງໜ້າ</b><span class="muted xs">' + esc(d.counterparty) + ' → ' + esc(catName(it.cat)) + '</span></span><input type="checkbox" data-act="sliprem"' + (it.remember ? ' checked' : '') + ' style="width:24px;height:24px;accent-color:#021e3a"></label>' : '') +
-      '<label class="row sm" style="gap:8px;min-height:44px"><input type="checkbox" data-act="slipskip"' + (it.skip ? ' checked' : '') + ' style="width:20px;height:20px;accent-color:#021e3a">ບໍ່ບັນທຶກສະລິບນີ້</label>';
-    const last = okItems.indexOf(it) === okItems.length - 1;
-    foot = '<div class="row"><button class="ib" style="width:56px;height:52px" data-act="slipprev" aria-label="ສະລິບກ່ອນໜ້າ"' + (pos === 0 ? ' disabled' : '') + '>' + svg('left', 20, 2) + '</button><button class="btn press" style="flex:1" data-act="slipnext">' + (last ? svg('check', 18, 2.4) + 'ຢືນຢັນ & ເບິ່ງສະຫຼຸບ' : 'ຢືນຢັນ & ຕໍ່ໄປ') + '</button></div>';
+  const sy = (ov.querySelector('.ov-body') || {}).scrollTop || 0;
+  const head = '<header class="row" style="gap:12px"><button class="ib" data-act="closeslip" aria-label="ກັບຄືນ">' + svg('left', 18, 2) + '</button><div class="col" style="gap:0;flex:1"><h1 class="h2" style="font-size:18px">' + (SL.items.length ? 'ສະຫຼຸບສະລິບ' : 'ນຳເຂົ້າສະລິບ') + '</h1><span class="muted xs">ຕົວເລກສີແດງ = ລາຍຈ່າຍ · ສີຂຽວ = ລາຍຮັບ</span></div></header>';
+  let body, foot;
+  if (!SL.items.length) {
+    body = head + '<label for="slip-file" class="card r3d" style="border:2px dashed rgba(11,39,66,.25);align-items:center;text-align:center;cursor:pointer;padding:28px 18px"><span class="ico accent float3d" style="width:56px;height:56px">' + svg('img', 28) + '</span><b>ແຕະເພື່ອເລືອກຮູບສະລິບ</b><span class="muted xs" style="line-height:1.6">ເລືອກໄດ້ຫຼາຍຮູບພ້ອມກັນ (ສູງສຸດ 30) · ເລືອກແລ້ວຈະອ່ານທັນທີ</span></label>' +
+      '<span class="muted xs" id="ocr-state" style="display:flex;align-items:center;gap:6px;padding:0 4px;line-height:1.6">' + ocrStateHtml() + '</span>';
+    foot = '<label for="slip-file" class="btn press" style="cursor:pointer">' + svg('img', 18) + '<span>ເລືອກຮູບສະລິບ</span></label>';
   } else {
-    const ok = SL.items.filter((x) => x.status === 'ok');
-    const keep = ok.filter((x) => !x.skip);
-    const sum = (t) => keep.filter((x) => x.type === t && (t === 'exp' || x.cat !== 'pass')).reduce((a, x) => a + Math.round(x.data.amount * rate(x.data.currency || 'LAK')), 0);
-    body = head('ສະຫຼຸບກ່ອນບັນທຶກ', 'slipback2') +
-      '<section class="hero r3d"><div class="shine"></div><b style="font-size:16px">ກວດແລ້ວ ' + ok.length + ' ສະລິບ · ຈະບັນທຶກ ' + keep.length + '</b><div class="g2"><div class="tile"><span class="hmut xs">ລາຍຈ່າຍ</span><b class="expL">−' + fmt(sum('exp')) + ' ₭</b></div><div class="tile"><span class="hmut xs">ລາຍຮັບ</span><b class="incL">+' + fmt(sum('inc')) + ' ₭</b></div></div></section>' +
-      '<section class="card r3d d1" style="gap:0">' + ok.map((x) => '<div class="tx" style="opacity:' + (x.skip ? '.45' : '1') + '"><span class="col" style="flex:1;min-width:0;gap:3px"><span class="nm" style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.data.counterparty || '—') + '</span><span class="sub">' + esc([x.data.date, x.skip ? (x.dup ? 'ຊ້ຳ — ຂ້າມ' : 'ຂ້າມ') : catName(x.cat)].filter(Boolean).join(' · ')) + '</span></span><span class="amt" style="color:' + (x.type === 'exp' ? 'var(--exp)' : 'var(--green)') + '">' + (x.type === 'exp' ? '−' : '+') + fmt(x.data.amount, x.data.currency === 'LAK' ? 0 : 2) + ' ' + CUR[x.data.currency || 'LAK'].sym + '</span></div>').join('') + '</section>';
-    foot = '<button class="btn press" data-act="slipsave"' + (keep.length ? '' : ' disabled') + '>' + svg('check', 18, 2.4) + 'ບັນທຶກ ' + keep.length + ' ລາຍການ</button>';
+    const idx = SL.items.map((it, i) => i);
+    const busyN = SL.items.filter((x) => x.status === 'busy' || x.status === 'wait').length;
+    const isNeed = (it) => it.status === 'err' || (it.status === 'ok' && !amtValue(it.amount));
+    const grp = { busy: idx.filter((i) => SL.items[i].status === 'busy' || SL.items[i].status === 'wait'), need: idx.filter((i) => isNeed(SL.items[i])), exp: idx.filter((i) => SL.items[i].status === 'ok' && !isNeed(SL.items[i]) && SL.items[i].type === 'exp'), inc: idx.filter((i) => SL.items[i].status === 'ok' && !isNeed(SL.items[i]) && SL.items[i].type === 'inc') };
+    const keep = slipKeep();
+    const sec = (title, list, col) => (list.length ? '<div class="row sb" style="padding:4px 4px 0"><b style="font-size:15px;color:' + col + '">' + title + '</b><span class="muted xs">' + list.length + ' ສະລິບ</span></div>' + list.map((i) => slipCard(SL.items[i], i)).join('') : '');
+    const done = SL.items.length - busyN;
+    body = head +
+      '<section class="hero r3d" style="padding:16px"><div class="shine"></div><div class="row sb"><b style="font-size:15px">' + (busyN ? 'ກຳລັງອ່ານ ' + done + '/' + SL.items.length + '…' : 'ອ່ານແລ້ວ ' + SL.items.length + ' ສະລິບ' + (SL.ms ? ' ໃນ ' + (SL.ms / 1000).toFixed(1) + ' ວິ' : '')) + '</b><span class="muted xs">' + (SL.items.some((x) => x.src === 'ai') ? '' : 'ອ່ານໃນເຄື່ອງ') + '</span></div>' +
+      '<div class="g2"><div class="tile"><span class="hmut xs">ລາຍຈ່າຍ · <span id="sl-expn">' + keep.filter((x) => x.type === 'exp').length + ' ສະລິບ</span></span><b class="expL money" id="sl-exp">−' + fmt(slipSum('exp')) + ' ₭</b></div><div class="tile"><span class="hmut xs">ລາຍຮັບ · <span id="sl-incn">' + keep.filter((x) => x.type === 'inc').length + ' ສະລິບ</span></span><b class="money" id="sl-inc" style="color:var(--green)">+' + fmt(slipSum('inc')) + ' ₭</b></div></div></section>' +
+      sec('ກຳລັງອ່ານ', grp.busy, 'var(--muted)') + sec('ຕ້ອງກວດ — ອ່ານບໍ່ຄົບ', grp.need, '#8A5300') + sec('ລາຍຈ່າຍ', grp.exp, 'var(--exp)') + sec('ລາຍຮັບ', grp.inc, 'var(--green)');
+    foot = '<div class="row" style="gap:10px"><label for="slip-file" class="ib" style="width:56px;height:52px;border-radius:26px;cursor:pointer;flex-shrink:0" aria-label="ເພີ່ມຮູບສະລິບ">' + svg('plus', 20, 2.2) + '</label><button class="btn press" style="flex:1" id="sl-save" data-act="slipsave"' + (keep.length && !busyN ? '' : ' disabled') + '>' + svg('check', 18, 2.4) + '<span>' + (busyN ? 'ກຳລັງອ່ານ ' + done + '/' + SL.items.length + '…' : 'ຢືນຢັນບັນທຶກ ' + keep.length + ' ລາຍການ') + '</span></button></div>';
   }
   ov.innerHTML = '<div class="ov-body">' + body + '</div><div class="ov-foot">' + foot + '</div>';
+  if (sy) ov.querySelector('.ov-body').scrollTop = sy;
 }
+function slipAct(a, i) {
+  const SL = S.slip, it = SL && SL.items[i]; if (!it) return;
+  if (a === 'slview') { const v = document.createElement('div'); v.className = 'slview'; v.innerHTML = '<img src="' + it.url + '" alt="ຮູບສະລິບ">'; v.addEventListener('click', () => v.remove()); document.body.appendChild(v); return; }
+  if (a === 'sltype') { it.type = it.type === 'exp' ? 'inc' : 'exp'; it.touched = true; const sg = suggestCat(it.type, it.d.counterparty, it.note || it.d.memo, it.time); it.cat = sg.cat; it.how = sg.how; }
+  else if (a === 'slopen') it.open = !it.open;
+  else if (a === 'slskip') { it.skip = !it.skip; it.touched = true; }
+  else if (a === 'slrm') { try { URL.revokeObjectURL(it.url); } catch (e) { } SL.items.splice(i, 1); }
+  else if (a === 'slretry') { slipReadOne(it); return; }
+  else if (a === 'slai') { slipReadOne(it, true); return; }
+  renderSlip();
+}
+function slipField(el) {
+  const SL = S.slip, it = SL && SL.items[Number(el.dataset.i)]; if (!it) return false;
+  const k = el.dataset.slip;
+  if (k === 'note') it.note = el.value;
+  else if (k === 'amount') { el.value = it.amount = amtFormat(el.value, it.cur); SL.pending = true; slipTotals(); }
+  else if (k === 'cat') { it.cat = el.value; return true; }
+  else if (k === 'cur') { it.cur = el.value; it.amount = amtFormat(it.amount, it.cur); return true; }
+  else if (k === 'date') { it.date = el.value; it.noDate = false; SL.pending = true; }
+  else if (k === 'time') { it.time = el.value; SL.pending = true; }
+  return false;
+}
+document.addEventListener('input', (e) => { if (e.target && e.target.dataset && e.target.dataset.slip && e.target.tagName === 'INPUT') slipField(e.target); });
+document.addEventListener('change', (e) => { if (e.target && e.target.dataset && e.target.dataset.slip && e.target.tagName === 'SELECT') { if (slipField(e.target)) { e.target.blur(); slipDupes(); renderSlip(); } } });
+document.addEventListener('focusout', (e) => { if (S.slip && S.slip.pending && e.target && e.target.closest && e.target.closest('#ov-slip')) setTimeout(() => { const ae = document.activeElement; if (S.slip && S.slip.pending && !(ae && ae.closest && ae.closest('#ov-slip') && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) { slipDupes(); renderSlip(); } }, 300); });
 
 /* ===== Settings ===== */
 function openSettings() {
@@ -870,16 +1239,7 @@ document.addEventListener('click', (e) => {
   else if (a === 'save') saveAdd();
   else if (a === 'slip') openSlip();
   else if (a === 'closeslip') closeOv('#ov-slip');
-  else if (a === 'sliprm') { S.slip.items.splice(Number(el.dataset.i), 1); renderSlip(); }
-  else if (a === 'slipread') slipRead();
-  else if (a === 'slipcat') { S.slip.items[S.slip.idx].cat = v; renderSlip(); }
-  else if (a === 'sliptype') { const it = S.slip.items[S.slip.idx]; it.type = it.type === 'exp' ? 'inc' : 'exp'; it.cat = it.type === 'exp' ? 'other' : 'other_inc'; renderSlip(); }
-  else if (a === 'sliprem') S.slip.items[S.slip.idx].remember = el.checked;
-  else if (a === 'slipskip') S.slip.items[S.slip.idx].skip = el.checked;
-  else if (a === 'slipnext') slipNav(1);
-  else if (a === 'slipprev') slipNav(-1);
-  else if (a === 'slipback') { S.slip.step = 'pick'; S.slip.items.forEach((x) => { x.status = 'wait'; }); renderSlip(); }
-  else if (a === 'slipback2') { S.slip.step = 'review'; renderSlip(); }
+  else if (a.indexOf('sl') === 0 && el.dataset.i != null) slipAct(a, Number(el.dataset.i));
   else if (a === 'slipsave') slipSave();
   else if (a === 'settings') openSettings();
   else if (a === 'closeset') closeOv('#ov-set');
@@ -915,7 +1275,6 @@ function glassCard() {
     '<span class="muted xs">ລາກໄປຂວາ = ໂປ່ງແສງຫຼາຍຂຶ້ນ. ບັນທຶກໄວ້ໃນເຄື່ອງນີ້ທັນທີ.</span></section>';
 }
 document.addEventListener('input', (e) => {
-  if (e.target && e.target.id === 'slip-note' && S.slip && S.slip.items[S.slip.idx]) { S.slip.items[S.slip.idx].note = e.target.value; return; }
   if (e.target && e.target.id === 'gl-range') {
     const pct = Number(e.target.value); const a = Math.round((1 - pct / 100) * 100) / 100;
     glassSet({ a, b: Math.round(12 + a * 28) });
@@ -934,6 +1293,7 @@ document.addEventListener('input', (e) => {
     toast('ໂຫຼດຂໍ້ມູນບໍ່ສຳເລັດ: ' + errMsg(e));
   }
   $('#loading').style.display = 'none';
+  try { if (localStorage.getItem('mt_ocr') === '1') setTimeout(() => { ocrReady(1).catch(() => { }); }, 2500); } catch (e) { }
   render();
 })();
 </script>
